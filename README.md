@@ -12,18 +12,9 @@ LichtFeld assumes COLMAP data with Y pointing down, and shows it upright by appl
 
 ## Install
 
-From LichtFeld's Python console:
+In LichtFeld, open **Tools → Plugin Marketplace**, enter `Tonysa87/lichtfeld-zup-view` in the GitHub field and click **Install Plugin**. The **Z-up View** tab appears in the right panel.
 
-```python
-import lichtfeld as lf
-lf.plugins.install("Tonysa87/lichtfeld-zup-view")
-```
-
-Or copy this folder to `~/.lichtfeld/plugins/zup_view` (on Windows, `C:\Users\<user>\.lichtfeld\plugins\zup_view`) and restart. The **Z-up View** tab appears in the right panel.
-
-If something fails: `lf.plugins.get_error("zup_view")` and `lf.plugins.get_traceback("zup_view")`.
-
-Requires LichtFeld Studio ≥ 0.5.5 (plugin API 1.x).
+Requires LichtFeld Studio ≥ 0.5.5. For other methods (Python console, manual copy), updating, uninstalling and troubleshooting, see **[INSTALL.md](INSTALL.md)**.
 
 ## Features
 
@@ -75,6 +66,6 @@ GPL-3.0-or-later, the same as LichtFeld Studio.
 
 Plugin che fa vedere la scena come in Metashape, CloudCompare o un CAD: **XY in piano, +Z in alto**. Agisce solo sul viewport, quindi dati, trasformazioni ed export restano identici.
 
-Per installarlo, copia la cartella in `~/.lichtfeld/plugins/zup_view` oppure usa `lf.plugins.install(...)`. Al riavvio compare la scheda **Z-up View**, in italiano se LichtFeld è in italiano.
+Per installarlo: **Strumenti → Marketplace plugin**, scrivi `Tonysa87/lichtfeld-zup-view` e clicca **Installa plugin**. Gli altri metodi sono in [INSTALL.md](INSTALL.md). Compare la scheda **Z-up View**, in italiano se LichtFeld è in italiano.
 
 Per la prima prova usa **Stato e diagnostica → Esegui diagnostica**, poi Pianta, Fronte e l'orbita Z-up (tasto centrale, Esc per uscire). Con coordinate UTM o comunque grandi, reimporta con `centralize_dataset` attivo: il viewport lavora in float32.
