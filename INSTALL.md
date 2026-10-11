@@ -32,13 +32,14 @@ Requires **LichtFeld Studio 0.5.4 or newer**. No extra Python packages are neede
 
 ## Check it works
 
-1. Load a scene, then open **Z-up View → Status and diagnostics → Run diagnostics**.
-2. Every line should read `OK` or `--`.
+1. Right after installing, the Z-up gizmo replaces LichtFeld's in the top-right corner. Seen from the side, its blue Z points up.
+2. Load a scene, then open **Z-up View → Status and diagnostics → Run diagnostics**. Every line should read `OK` or `--`.
 3. Click **Frame scene**, then **Plan**: X should point right and North up.
+4. Drag with the middle mouse: the view orbits around Z and the horizon stays level.
 
 ## Update and uninstall
 
-- **Update:** use **Update** in Tools → Plugin Marketplace, or run `lf.plugins.update("zup_view")`. Settings are kept, because they live in the plugin data folder.
+- **Update:** use **Update** in Tools → Plugin Marketplace, or run `lf.plugins.update("zup_view")`, then restart LichtFeld. Your preferences are kept, because they live in the plugin data folder.
 - **Uninstall:** use **Uninstall** in the Marketplace, or run `lf.plugins.uninstall("zup_view")`.
 
 ## Troubleshooting
@@ -74,7 +75,11 @@ lf.plugins.install("Tonysa87/lichtfeld-zup-view")
 3. Spostala in `C:\Users\<utente>\.lichtfeld\plugins\` su Windows, oppure in `~/.lichtfeld/plugins/` su Linux.
 4. Riavvia LichtFeld. Il file `pyproject.toml` deve stare direttamente dentro `zup_view`.
 
-**Verifica.** Carica una scena e usa **Stato e diagnostica → Esegui diagnostica**: tutte le righe devono essere `OK` o `--`. Poi **Inquadra scena** e **Pianta**: X deve andare a destra e il Nord in alto.
+**Verifica.**
+1. In alto a destra compare il gizmo Z-up al posto di quello di LichtFeld.
+2. Carica una scena e usa **Stato e diagnostica → Esegui diagnostica**: tutte le righe devono essere `OK` o `--`.
+3. Clicca **Inquadra scena**, poi **Pianta**: X deve andare a destra e il Nord in alto.
+4. Trascina col tasto centrale: la vista gira attorno a Z con l'orizzonte in piano.
 
 **Problemi.**
 - Se compare "Plugin directory already exists", cancella la vecchia cartella `zup_view` e reinstalla.
