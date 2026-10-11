@@ -20,6 +20,7 @@ def on_load():
     zup_bridge.load_settings()
     for cls in _classes:
         lf.register_class(cls)
+    zup_bridge.apply_native_grid_on_load()
     try:
         zup_overlay.register()
     except Exception as e:
@@ -32,6 +33,7 @@ def on_unload():
     # (operator_registry.cpp): niente cancel_modal() globale.
     stop_modal()
     zup_bridge.maybe_save_settings(force=True)
+    zup_bridge.restore_native_grid_on_unload()
     zup_overlay.unregister()
     for cls in reversed(_classes):
         try:

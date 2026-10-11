@@ -34,7 +34,7 @@ class ZupSettings:
         "show_grid", "show_triad", "show_origin_axes", "show_hud",
         "grid_step", "grid_auto_step", "grid_half_size", "grid_major_every", "grid_follow_target",
         "orbit_sensitivity", "invert_yaw", "invert_pitch", "orbit_button_idx",
-        "step_deg", "ortho_for_axis_views", "language",
+        "step_deg", "ortho_for_axis_views", "language", "native_grid_xy_on_load",
     )
 
     def __init__(self):
@@ -57,6 +57,9 @@ class ZupSettings:
         self.step_deg = 15.0
         self.ortho_for_axis_views = True
         self.language = "auto"         # "auto" | "en" | "it"
+        self.native_grid_xy_on_load = True  # griglia nativa sul piano XY dei dati all'avvio
+        self._native_grid_pending = False
+        self._native_grid_prev_plane = None
 
         # stato runtime
         self.scene_center = None
@@ -504,3 +507,49 @@ def set_native_grid_plane(plane_id: str) -> bool:
     except Exception as e:
         _set_err(t("err_native_grid"), e)
         return False
+
+
+# --------------------------------------------------------------------------- #
+# Griglia nativa su XY all'avvio del plugin (e ripristino allo scarico)
+# --------------------------------------------------------------------------- #
+def _plane_id(value) -> str:
+    return str(value).strip() if value is not None else ""
+
+
+def apply_native_grid_on_load() -> bool:
+    """Porta la griglia nativa sul piano XY dei dati se l'opzione e' attiva.
+    Se le impostazioni di render non sono ancora disponibili (avvio dell'app),
+    riprova dal draw handler al primo frame utile."""
+    if not S.native_grid_xy_on_load:
+        S._native_grid_pending = False
+        return False
+    try:
+        rs = lf.get_render_settings()
+        if rs is None:
+            raise RuntimeError("render settings not ready")
+        current = _plane_id(rs.get("grid_plane"))
+        if current != NATIVE_GRID_PLANE_XY:
+            if S._native_grid_prev_plane is None:
+                S._native_grid_prev_plane = current or NATIVE_GRID_PLANE_DEFAULT
+            rs.set("grid_plane", NATIVE_GRID_PLANE_XY)
+        S._native_grid_pending = False
+        return True
+    except Exception:
+        S._native_grid_pending = True
+        return False
+
+
+def restore_native_grid_on_unload() -> None:
+    """Rimette il piano che c'era prima, solo se l'abbiamo cambiato noi e
+    l'utente non l'ha modificato nel frattempo."""
+    prev = S._native_grid_prev_plane
+    S._native_grid_prev_plane = None
+    S._native_grid_pending = False
+    if prev is None:
+        return
+    try:
+        rs = lf.get_render_settings()
+        if rs is not None and _plane_id(rs.get("grid_plane")) == NATIVE_GRID_PLANE_XY:
+            rs.set("grid_plane", prev)
+    except Exception:
+        pass

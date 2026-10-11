@@ -23,7 +23,7 @@ Requires LichtFeld Studio ≥ 0.5.4. For other methods (Python console, manual c
 - **Z-up orbit (modal):** while active, the middle mouse button (or Alt + left mouse) orbits around the vertical axis through the pivot. Pan (right mouse), zoom (wheel), selection and gizmos stay native. Press Esc to exit.
 - **Step rotation:** ±N° buttons, horizontally and vertically. These work even without the modal.
 - **XY grid** at a chosen height (default: estimated floor), automatic 1-2-5 spacing, major lines, X axis in red and Y axis in green. It is aligned in both perspective and orthographic views.
-- **Native grid on XY:** one click sets LichtFeld's own grid to the data XY plane at Z = 0.
+- **Native grid on XY:** when the plugin starts, LichtFeld's own grid moves to the data XY plane at Z = 0, and the previous plane is restored when the plugin unloads. This is optional, and buttons let you switch it by hand.
 - **Axis triad** and **HUD**: view heading (0 = North), elevation and pivot in data coordinates.
 - **Large-coordinate warning:** survey coordinates far from the origin (for example UTM) exceed float32 precision. Re-import with `centralize_dataset` enabled.
 - **Diagnostics:** one button checks the host behaviours the plugin relies on and prints a report in English that you can paste into an issue.
@@ -31,6 +31,7 @@ Requires LichtFeld Studio ≥ 0.5.4. For other methods (Python console, manual c
 
 ## Known limits
 
+- LichtFeld's orientation gizmo (top right) shows the viewport's internal axes, so for Z-up data its Y and Z labels appear reversed and clicking it snaps to the matching internal view. LichtFeld does not let plugins change it. The plugin's triad (bottom left) shows the real data axes.
 - Native navigation (middle-mouse orbit when the plugin's orbit is off, the view cube, Align to Ground) remains Y-up. Use the plugin's orbit or the view buttons.
 - While the Z-up orbit is active, native tools that need their own modal (for example Align point picking) wait until you press Esc. The plugin will not start its orbit while another modal is running.
 - Coordinates are shown as LichtFeld reads them: if `centralize_dataset` was used at import, they are translated.

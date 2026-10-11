@@ -142,6 +142,8 @@ def draw(ctx):
     S = zb.S
     try:
         zb.reconcile_modal_state()
+        if S._native_grid_pending:
+            zb.apply_native_grid_on_load()
         cam = zb.get_camera_data()
         if cam is None:
             return

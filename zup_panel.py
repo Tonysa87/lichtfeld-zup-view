@@ -173,6 +173,9 @@ class ZupPanel(lf.ui.Panel):
                 ui.text_colored(t("grid_trunc"), COL_WARN)
 
         ui.text_disabled(t("native_grid"))
+        changed, S.native_grid_xy_on_load = ui.checkbox(t("native_xy_on_load"), S.native_grid_xy_on_load)
+        if changed and S.native_grid_xy_on_load:
+            zb.apply_native_grid_on_load()
         if ui.button(t("native_xy")):
             zb.set_native_grid_plane(zb.NATIVE_GRID_PLANE_XY)
         ui.same_line()

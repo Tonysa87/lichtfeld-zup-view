@@ -101,6 +101,7 @@ with open(os.path.join(lf.plugins.data_dir("zup_view"), "settings.json"), "w") a
     json.dump({"grid_major_every": 5, "invert_yaw": True}, fh)
 zup_view.on_load()
 check(zup_overlay.HANDLER_ID in lf._handlers, "overlay registrato")
+check(lf._rs.p["grid_plane"] == "2", "all'avvio la griglia nativa va sul piano XY dei dati")
 check(zb.S.grid_major_every == 5 and zb.S.invert_yaw is True, "impostazioni caricate da data_dir")
 from zup_view import zup_i18n
 mk = zup_i18n.missing_keys()
@@ -318,5 +319,20 @@ zup_overlay.draw(Ctx())
 check(not zb.S.modal_active, "stato riallineato quando LichtFeld toglie il modale")
 
 zup_view.on_unload(); check(not lf._handlers and not lf._registered, "unload pulito (senza cancel_modal globale)")
+# ciclo completo: piano originale -> XY all'avvio -> ripristino allo scarico
+lf._rs.p["grid_plane"] = "1"
+zup_view.on_load(); check(lf._rs.p["grid_plane"] == "2", "ricarico: griglia su XY")
+zup_view.on_unload(); check(lf._rs.p["grid_plane"] == "1", "scarico: piano originale ripristinato")
+# render settings non ancora pronte all'avvio: applicato al primo frame
+_orig = lf.get_render_settings
+lf.get_render_settings = lambda: None
+zup_view.on_load(); check(zb.S._native_grid_pending, "avvio senza render settings: in attesa")
+lf.get_render_settings = _orig
+zup_overlay.draw(Ctx()); check(lf._rs.p["grid_plane"] == "2" and not zb.S._native_grid_pending, "applicato al primo frame utile")
+zup_view.on_unload()
+# opzione disattivata: nessuna modifica
+zb.S.native_grid_xy_on_load = False; zb.maybe_save_settings(force=True); lf._rs.p["grid_plane"] = "1"
+zup_view.on_load(); check(lf._rs.p["grid_plane"] == "1", "opzione spenta: griglia nativa non toccata")
+zup_view.on_unload()
 print("\nFALLITI:", fails)
 sys.exit(1 if fails else 0)
