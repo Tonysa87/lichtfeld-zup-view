@@ -119,6 +119,60 @@ def _draw_triad(ctx, origin, size, f, r, u):
         ctx.draw_text_2d((end[0] + 4.0, end[1] - 8.0), name, col, 0.0)
 
 
+# Gizmo Z-up: stessa posizione e proporzioni di quello nativo
+# (gizmo_manager: 95 px, margine 10 px, assi a 0.63, distanza 2.8, fov 38)
+GIZMO_SIZE = 95.0
+GIZMO_MARGIN = 10.0
+_GIZMO_K = 0.63 / 2.8 / 0.3443   # posizione proiettata / (size/2)
+_GIZMO_R = 0.198 / 2.8 / 0.3443  # raggio sferetta / (size/2)
+_GIZMO_AXES = (
+    ("X", (1.0, 0.0, 0.0), COL_X, "right", "left"),
+    ("Y", (0.0, 1.0, 0.0), COL_Y, "back", "front"),
+    ("Z", (0.0, 0.0, 1.0), COL_Z, "top", "bottom"),
+)
+
+
+def _dim(col, k=0.55):
+    return (col[0] * k, col[1] * k, col[2] * k, col[3])
+
+
+def _draw_gizmo(ctx, origin, size, f, r, u):
+    """Gizmo di orientamento con gli assi dei DATI, in alto a destra.
+    Registra le sferette in S.gizmo_markers per il clic (orbita Z-up attiva)."""
+    sc = zb.ui_scale()
+    gs = GIZMO_SIZE * sc
+    half = gs * 0.5
+    cx = origin[0] + size[0] - GIZMO_MARGIN * sc - half
+    cy = origin[1] + GIZMO_MARGIN * sc + half
+    rad = max(6.0, _GIZMO_R * half)
+    items = []
+    for name, a, col, pos_view, neg_view in _GIZMO_AXES:
+        for sign, view in ((1.0, pos_view), (-1.0, neg_view)):
+            v = (a[0] * sign, a[1] * sign, a[2] * sign)
+            depth = zc.dot(v, f)  # > 0: punta lontano dalla camera
+            p = (cx + zc.dot(v, r) * _GIZMO_K * half, cy - zc.dot(v, u) * _GIZMO_K * half)
+            items.append((depth, name, sign, col, p, view))
+    markers = []
+    for depth, name, sign, col, p, view in sorted(items, key=lambda it: it[0], reverse=True):
+        if sign > 0:
+            ctx.draw_line_2d((cx, cy), p, col, 2.0 * sc)
+            ctx.draw_filled_circle_2d(p, rad, col)
+            ctx.draw_text_2d((p[0] - 4.0 * sc, p[1] - 7.0 * sc), name, (0.05, 0.05, 0.05, 1.0), 0.0)
+        else:
+            ctx.draw_filled_circle_2d(p, rad, (0.08, 0.08, 0.08, 0.85))
+            ctx.draw_circle_2d(p, rad, _dim(col, 1.0), 2.0 * sc)
+        markers.append((p[0], p[1], rad * 1.6, view, depth))
+    # per il clic vince la sferetta piu' vicina alla camera
+    zb.S.gizmo_markers = [(x, y, rr, view) for x, y, rr, view, _ in sorted(markers, key=lambda m: m[4])]
+
+
+def gizmo_hit(x: float, y: float):
+    for mx, my, rr, view in zb.S.gizmo_markers:
+        if (x - mx) ** 2 + (y - my) ** 2 <= rr * rr:
+            return view
+    return None
+
+
 def _draw_hud(ctx, origin, size, eye, target, up):
     S = zb.S
     el = zc.elevation_deg(eye, target)
@@ -157,6 +211,10 @@ def draw(ctx):
             _draw_origin_axes(proj, max(S.grid_step * 5.0, 1.0))
         if S.show_triad:
             _draw_triad(ctx, proj.origin, proj.size, proj.f, proj.r, proj.u)
+        if S.replace_native_gizmo:
+            _draw_gizmo(ctx, proj.origin, proj.size, proj.f, proj.r, proj.u)
+        else:
+            S.gizmo_markers = []
         if S.show_hud:
             _draw_hud(ctx, proj.origin, proj.size, eye, target, up)
         zb.maybe_save_settings()

@@ -92,7 +92,12 @@ class PanelSpace: MAIN_PANEL_TAB=0
 class Panel: pass
 _lang=["it"]; _redraws=[0]
 def _req(delay=0.0): _redraws[0]+=1
-ui=types.SimpleNamespace(Panel=Panel,PanelSpace=PanelSpace,ops=_UiOps(),get_current_language=lambda: _lang[0],request_redraw=_req)
+_panels={"native.viewport_gizmo": True}
+def _set_panel_enabled(pid, en):
+    if pid not in _panels: raise KeyError(pid)
+    _panels[pid]=bool(en)
+ui=types.SimpleNamespace(Panel=Panel,PanelSpace=PanelSpace,ops=_UiOps(),get_current_language=lambda: _lang[0],request_redraw=_req,
+                         set_panel_enabled=_set_panel_enabled,is_panel_enabled=lambda p: _panels[p],get_ui_scale=lambda: 1.0)
 
 class _Settings:
     store={}

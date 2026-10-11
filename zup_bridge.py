@@ -34,7 +34,7 @@ class ZupSettings:
         "show_grid", "show_triad", "show_origin_axes", "show_hud",
         "grid_step", "grid_auto_step", "grid_half_size", "grid_major_every", "grid_follow_target",
         "orbit_sensitivity", "invert_yaw", "invert_pitch", "orbit_button_idx",
-        "step_deg", "ortho_for_axis_views", "language", "native_grid_xy_on_load",
+        "step_deg", "ortho_for_axis_views", "language", "native_grid_xy_on_load", "replace_native_gizmo",
     )
 
     def __init__(self):
@@ -59,6 +59,9 @@ class ZupSettings:
         self.language = "auto"         # "auto" | "en" | "it"
         self.native_grid_xy_on_load = True  # griglia nativa sul piano XY dei dati all'avvio
         self._native_grid_pending = False
+        self.replace_native_gizmo = True    # gizmo nativo (assi interni) sostituito dal nostro
+        self.gizmo_markers = []             # [(x, y, raggio, vista)] per il clic
+        self._native_gizmo_hidden = False
         self._native_grid_prev_plane = None
 
         # stato runtime
@@ -553,3 +556,42 @@ def restore_native_grid_on_unload() -> None:
             rs.set("grid_plane", prev)
     except Exception:
         pass
+
+
+# --------------------------------------------------------------------------- #
+# Gizmo di orientamento nativo
+# --------------------------------------------------------------------------- #
+# Il gizmo in alto a destra e' il pannello "native.viewport_gizmo" e disegna
+# gli assi interni del viewport (per dati Z-up: Y e Z rovesciate). Lo si puo'
+# spegnere con lf.ui.set_panel_enabled; lo stato non viene salvato da
+# LichtFeld, quindi al riavvio senza plugin torna da solo.
+NATIVE_GIZMO_PANEL = "native.viewport_gizmo"
+
+
+def set_native_gizmo_visible(visible: bool) -> bool:
+    try:
+        lf.ui.set_panel_enabled(NATIVE_GIZMO_PANEL, bool(visible))
+        S._native_gizmo_hidden = not visible
+        return True
+    except Exception as e:
+        _set_err(t("err_native_gizmo"), e)
+        return False
+
+
+def apply_gizmo_setting() -> None:
+    if S.replace_native_gizmo and not S._native_gizmo_hidden:
+        set_native_gizmo_visible(False)
+    elif not S.replace_native_gizmo and S._native_gizmo_hidden:
+        set_native_gizmo_visible(True)
+
+
+def restore_native_gizmo() -> None:
+    if S._native_gizmo_hidden:
+        set_native_gizmo_visible(True)
+
+
+def ui_scale() -> float:
+    try:
+        return max(1.0, float(lf.ui.get_ui_scale()))
+    except Exception:
+        return 1.0

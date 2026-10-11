@@ -108,6 +108,14 @@ class ZupOrbitOperator(Operator):
                 self._last = None
             return PASS
 
+        if et == "LEFTMOUSE" and ev == "PRESS" and not getattr(event, "alt", False):
+            from . import zup_overlay
+
+            view = zup_overlay.gizmo_hit(float(event.mouse_x), float(event.mouse_y))
+            if view is not None:
+                zb.go_standard_view(view)
+                return MODAL
+
         if ev == "PRESS" and self._is_orbit_press(event) and self._inside_viewport(event):
             self._dragging = True
             self._last = (float(event.mouse_x), float(event.mouse_y))

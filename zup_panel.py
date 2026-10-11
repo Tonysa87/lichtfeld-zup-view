@@ -153,6 +153,9 @@ class ZupPanel(lf.ui.Panel):
         _, S.show_triad = ui.checkbox(t("triad"), S.show_triad)
         ui.same_line()
         _, S.show_hud = ui.checkbox(t("hud"), S.show_hud)
+        changed, S.replace_native_gizmo = ui.checkbox(t("replace_gizmo"), S.replace_native_gizmo)
+        if changed:
+            zb.apply_gizmo_setting()
         _, S.show_origin_axes = ui.checkbox(t("origin_axes"), S.show_origin_axes)
         _, S.grid_follow_target = ui.checkbox(t("grid_follow"), S.grid_follow_target)
         _, S.grid_auto_step = ui.checkbox(t("grid_auto"), S.grid_auto_step)

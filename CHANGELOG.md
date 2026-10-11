@@ -5,7 +5,7 @@
 - Panel layout fix: widgets no longer go missing or out of order after opening or closing a section or switching the orbit on and off. LichtFeld's immediate-mode layout matches widgets by position, so each section now lives in a stable child container and every variable part has its own container.
 - The status line under Navigation now also shows when the Z-up orbit is off.
 - When the plugin starts, LichtFeld's native grid moves to the data XY plane (Z = 0); the previous plane is restored when the plugin is unloaded. This can be turned off in Grid and axes.
-- Known limit: LichtFeld's orientation gizmo (top right) always shows the viewport's internal axes, where Y and Z appear reversed for Z-up data. LichtFeld 0.5.4 offers plugins no way to hide or relabel it, so use the plugin's triad (bottom left).
+- Z-up orientation gizmo: when the plugin starts, LichtFeld's gizmo (top right) is hidden and replaced, at the same place and size, by one that shows the data axes. LichtFeld's gizmo shows the viewport's internal axes, where Y and Z appear reversed for Z-up data. While the Z-up orbit is active, clicking a sphere snaps to that view (+Z = plan, −Y = front from South, and so on). It comes back when the plugin unloads, and can be turned off in Grid and axes.
 
 ## 0.2.1 (2026-10-11)
 

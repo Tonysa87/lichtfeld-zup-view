@@ -72,7 +72,7 @@ class Ctx:
     """Contesto draw con le stesse regole di py_viewport.cpp."""
     viewport_size = VP_SIZE
 
-    def __init__(s): s.l3 = []; s.l2 = []; s.t = []
+    def __init__(s): s.l3 = []; s.l2 = []; s.t = []; s.circ = []
 
     def world_to_screen(s, p): return native_persp_px(p)
 
@@ -81,6 +81,10 @@ class Ctx:
         s.l3.append((a, b, c))
 
     def draw_line_2d(s, a, b, c, t=1): s.l2.append((a, b, c))
+
+    def draw_filled_circle_2d(s, p, r, c): s.circ.append((p, r, c))
+
+    def draw_circle_2d(s, p, r, c, t=1): s.circ.append((p, r, c))
 
     def draw_text_2d(s, p, txt, c, f=0): s.t.append((p, txt))
 
@@ -102,6 +106,7 @@ with open(os.path.join(lf.plugins.data_dir("zup_view"), "settings.json"), "w") a
 zup_view.on_load()
 check(zup_overlay.HANDLER_ID in lf._handlers, "overlay registrato")
 check(lf._rs.p["grid_plane"] == "2", "all'avvio la griglia nativa va sul piano XY dei dati")
+check(lf._panels["native.viewport_gizmo"] is False, "all'avvio il gizmo nativo viene nascosto")
 check(zb.S.grid_major_every == 5 and zb.S.invert_yaw is True, "impostazioni caricate da data_dir")
 from zup_view import zup_i18n
 mk = zup_i18n.missing_keys()
@@ -187,8 +192,8 @@ check(abs(zc.view_heading_deg((-10, 0, 5), (0, 0, 0)) - 90.0) < 1e-9, "heading: 
 # ---------------------------------------------------------------- overlay prospettico
 zb.go_standard_view("iso"); zb.S.show_origin_axes = True
 ctx = Ctx(); zup_overlay.draw(ctx)
-check(zb.S.last_error == "" and len(ctx.l3) > 20 and len(ctx.l2) == 3 and len(ctx.t) >= 4,
-      f"overlay prospettico: {len(ctx.l3)} linee 3D, {len(ctx.l2)} triade, {len(ctx.t)} testi, err='{zb.S.last_error}'")
+check(zb.S.last_error == "" and len(ctx.l3) > 20 and len(ctx.l2) == 6 and len(ctx.circ) == 9 and len(ctx.t) >= 7,
+      f"overlay prospettico: {len(ctx.l3)} linee 3D, {len(ctx.l2)} linee 2D (triade+gizmo), {len(ctx.circ)} cerchi, {len(ctx.t)} testi, err='{zb.S.last_error}'")
 check(np.allclose(zb.S.viewport_origin, VP_POS, atol=1e-3), f"origine viewport ricavata {zb.S.viewport_origin}")
 check(all(p[0] >= VP_POS[0] and p[1] >= VP_POS[1] for p, _ in ctx.t), "HUD e triade dentro il viewport (offset applicato)")
 
@@ -205,6 +210,12 @@ zb.go_standard_view("top")
 check(lf.is_orthographic(), "pianta ortografica")
 ctx = Ctx(); zup_overlay.draw(ctx)
 check(len(ctx.l3) == 0 and len(ctx.l2) > 20, f"in ortografica si disegna in 2D ({len(ctx.l2)} segmenti)")
+# gizmo Z-up in pianta: +X a destra del centro, +Y sopra, Z verso la camera; in alto a destra
+gm = {v: (x, y) for x, y, rr, v in zb.S.gizmo_markers}
+gcx = (gm["right"][0] + gm["left"][0]) / 2; gcy = (gm["back"][1] + gm["front"][1]) / 2
+check(gm["right"][0] > gcx + 20 and gm["back"][1] < gcy - 20, f"gizmo in pianta: X a destra, Y (Nord) in alto")
+check(gcx > VP_POS[0] + VP_SIZE[0] - 120 and gcy < VP_POS[1] + 120, f"gizmo in alto a destra del viewport ({gcx:.0f},{gcy:.0f})")
+check(zb.S.gizmo_markers[0][3] == "top", "gizmo: in pianta la sferetta cliccabile al centro e' +Z (vista dall'alto)")
 lines, _ = zc.grid_lines(zb.get_camera_data()[1], zb.S.grid_half_size, zb.S.grid_step, zb.S.grid_z, zb.S.grid_major_every)
 (p0, p1), _, _ = lines[len(lines) // 3]
 exp0 = native_ortho_px(zc.data_to_vis(p0))
@@ -221,7 +232,9 @@ check([zc.nice_step(x) for x in (0.13, 0.3, 0.7, 1.0, 4.0, 12)] == [0.2, 0.5, 1.
 
 # triade in pianta: X a destra, Y in alto
 zb.go_standard_view("top")
+zb.S.replace_native_gizmo = False
 ctx = Ctx(); zup_overlay.draw(ctx)
+zb.S.replace_native_gizmo = True
 tri = {c: (b[0] - a[0], b[1] - a[1]) for a, b, c in ctx.l2[-3:]}
 check(tri[zup_overlay.COL_X][0] > 40 and tri[zup_overlay.COL_Y][1] < -40, f"triade pianta {tri}")
 
@@ -305,6 +318,12 @@ check(op.modal(None, E(type="WHEELUPMOUSE", value="PRESS")) == {"PASS_THROUGH"},
 op.modal(None, E(type="MIDDLEMOUSE", value="PRESS"))
 check(op.modal(None, E(type="MIDDLEMOUSE", value="PRESS")) == {"RUNNING_MODAL"} and op._dragging, "rilascio perso: nuovo MMB riprende il drag (non va all'orbita nativa)")
 check(op.modal(None, E(type="LEFTMOUSE", value="PRESS")) == {"PASS_THROUGH"} and not op._dragging, "rilascio perso: un altro clic chiude il drag")
+# clic sul gizmo Z-up con orbita attiva: va alla vista dell'asse
+zb.go_standard_view("iso"); zup_overlay.draw(Ctx())
+fx, fy, _, _ = next(m for m in zb.S.gizmo_markers if m[3] == "front")
+check(op.modal(None, E(type="LEFTMOUSE", value="PRESS", mouse_x=fx, mouse_y=fy)) == {"RUNNING_MODAL"}, "clic sul gizmo catturato")
+d = screen_dirs(); check(d["X"][0] > 0.99 and d["Z"][1] > 0.99, "clic su -Y del gizmo: vista Fronte (da Sud)")
+check(op.modal(None, E(type="LEFTMOUSE", value="PRESS", mouse_x=800., mouse_y=400.)) == {"PASS_THROUGH"}, "clic fuori dal gizmo passa (selezione)")
 check(op.modal(None, E(type="ESC", value="PRESS")) == {"CANCELLED"} and not zb.S.modal_active, "Esc esce")
 check(lf._redraws[0] > r0, "redraw richiesto al cambio di stato")
 zb.S.orbit_button_idx = 1; op.invoke(None, None)
@@ -319,6 +338,7 @@ zup_overlay.draw(Ctx())
 check(not zb.S.modal_active, "stato riallineato quando LichtFeld toglie il modale")
 
 zup_view.on_unload(); check(not lf._handlers and not lf._registered, "unload pulito (senza cancel_modal globale)")
+check(lf._panels["native.viewport_gizmo"] is True, "allo scarico il gizmo nativo torna visibile")
 # ciclo completo: piano originale -> XY all'avvio -> ripristino allo scarico
 lf._rs.p["grid_plane"] = "1"
 zup_view.on_load(); check(lf._rs.p["grid_plane"] == "2", "ricarico: griglia su XY")
