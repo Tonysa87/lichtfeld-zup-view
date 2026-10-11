@@ -58,7 +58,7 @@ Requires LichtFeld Studio ≥ 0.5.5. For other methods (Python console, manual c
 
 ## License
 
-GPL-3.0-or-later, the same as LichtFeld Studio.
+Copyright © 2026 Antonio Sartini. Released under GPL-3.0-or-later, the same license as LichtFeld Studio.
 
 ---
 

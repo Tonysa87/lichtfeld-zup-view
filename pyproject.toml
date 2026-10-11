@@ -4,7 +4,7 @@ version = "0.2.0"
 description = "Survey-style viewport for Z-up data: XY plan, +Z up, turntable orbit, XY grid. View only, scene data is never modified."
 readme = "README.md"
 license = "GPL-3.0-or-later"
-authors = [{name = "Tony Sartini"}]
+authors = [{name = "Antonio Sartini"}]
 keywords = ["z-up", "survey", "photogrammetry", "metashape", "viewport", "navigation", "grid"]
 dependencies = []
 
