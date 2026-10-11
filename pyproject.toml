@@ -1,0 +1,20 @@
+[project]
+name = "zup_view"
+version = "0.2.0"
+description = "Survey-style viewport for Z-up data: XY plan, +Z up, turntable orbit, XY grid. View only, scene data is never modified."
+readme = "README.md"
+license = "GPL-3.0-or-later"
+authors = [{name = "Tony Sartini"}]
+keywords = ["z-up", "survey", "photogrammetry", "metashape", "viewport", "navigation", "grid"]
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/Tonysa87/lichtfeld-zup-view"
+Issues = "https://github.com/Tonysa87/lichtfeld-zup-view/issues"
+
+[tool.lichtfeld]
+auto_start = true
+hot_reload = true
+plugin_api = ">=1,<2"
+lichtfeld_version = ">=0.5.5"
+required_features = ["operators.v1", "panels.v1"]
