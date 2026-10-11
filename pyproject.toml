@@ -1,6 +1,6 @@
 [project]
 name = "zup_view"
-version = "0.2.0"
+version = "0.2.1"
 description = "Survey-style viewport for Z-up data: XY plan, +Z up, turntable orbit, XY grid. View only, scene data is never modified."
 readme = "README.md"
 license = "GPL-3.0-or-later"
@@ -16,5 +16,5 @@ Issues = "https://github.com/Tonysa87/lichtfeld-zup-view/issues"
 auto_start = true
 hot_reload = true
 plugin_api = ">=1,<2"
-lichtfeld_version = ">=0.5.5"
+lichtfeld_version = ">=0.5.4"
 required_features = ["operators.v1", "panels.v1"]

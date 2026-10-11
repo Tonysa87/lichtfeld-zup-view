@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1 (2026-10-11)
+
+- Supports LichtFeld Studio 0.5.4, the latest release: every host API the plugin uses is identical in 0.5.4 and 0.5.5. The minimum is now `>=0.5.4`.
+
 ## 0.2.0 (2026-10-11)
 
 Audit against the LichtFeld Studio 0.5.5 source.

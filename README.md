@@ -8,13 +8,13 @@ It changes **only how the scene is viewed**: camera presets, a turntable orbit a
 
 ## Why
 
-LichtFeld assumes COLMAP data with Y pointing down, and shows it upright by applying a fixed 180° rotation about X (`DATA_TO_VISUALIZER_WORLD_AXES = diag(1, -1, -1)`). Native navigation then orbits around the viewport's +Y axis. With Z-up data, that axis is a horizontal direction (data −Y): the floor appears vertical and orbiting tumbles the scene. There is no world-up setting in LichtFeld 0.5.5, so this plugin provides Z-up views and navigation on top of the native camera.
+LichtFeld assumes COLMAP data with Y pointing down, and shows it upright by applying a fixed 180° rotation about X (`DATA_TO_VISUALIZER_WORLD_AXES = diag(1, -1, -1)`). Native navigation then orbits around the viewport's +Y axis. With Z-up data, that axis is a horizontal direction (data −Y): the floor appears vertical and orbiting tumbles the scene. There is no world-up setting in LichtFeld (checked up to 0.5.5), so this plugin provides Z-up views and navigation on top of the native camera.
 
 ## Install
 
 In LichtFeld, open **Tools → Plugin Marketplace**, enter `Tonysa87/lichtfeld-zup-view` in the GitHub field and click **Install Plugin**. The **Z-up View** tab appears in the right panel.
 
-Requires LichtFeld Studio ≥ 0.5.5. For other methods (Python console, manual copy), updating, uninstalling and troubleshooting, see **[INSTALL.md](INSTALL.md)**.
+Requires LichtFeld Studio ≥ 0.5.4. For other methods (Python console, manual copy), updating, uninstalling and troubleshooting, see **[INSTALL.md](INSTALL.md)**.
 
 ## Features
 

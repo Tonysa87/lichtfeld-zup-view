@@ -1,6 +1,6 @@
 # Installation guide / Guida all'installazione
 
-Requires **LichtFeld Studio 0.5.5 or newer**. No extra Python packages are needed.
+Requires **LichtFeld Studio 0.5.4 or newer**. No extra Python packages are needed.
 
 *Italiano più sotto.*
 
@@ -47,7 +47,7 @@ Requires **LichtFeld Studio 0.5.5 or newer**. No extra Python packages are neede
 |---|---|
 | "Plugin directory already exists" | A previous copy is in `~/.lichtfeld/plugins/zup_view`. Delete that folder and install again. |
 | The tab does not appear | Run `lf.plugins.get_error("zup_view")` and `lf.plugins.get_traceback("zup_view")` in the Python Console. |
-| "requires LichtFeld …" | Your LichtFeld is older than 0.5.5. Update it. |
+| "requires LichtFeld …" | Your LichtFeld is older than 0.5.4. Update it. |
 | "git not found in PATH" | Options A and B use git. Install git, or use option C. |
 | Plugin loaded but not active | In the Marketplace, select `zup_view` and click **Load**, or run `lf.plugins.load("zup_view")`. |
 
@@ -57,7 +57,7 @@ To report a bug, open an [issue](https://github.com/Tonysa87/lichtfeld-zup-view/
 
 ## Italiano
 
-Serve **LichtFeld Studio 0.5.5 o successivo**. Non servono pacchetti Python aggiuntivi.
+Serve **LichtFeld Studio 0.5.4 o successivo**. Non servono pacchetti Python aggiuntivi.
 
 **A. Dal Marketplace (consigliato).** Apri **Strumenti → Marketplace plugin**. Nel campo dell'indirizzo GitHub scrivi `Tonysa87/lichtfeld-zup-view` e clicca **Installa plugin**. Nel pannello di destra compare la scheda **Z-up View**.
 
