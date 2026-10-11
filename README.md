@@ -35,8 +35,7 @@ Requires LichtFeld Studio ≥ 0.5.4. For other methods (Python console, manual c
 ## Known limits
 
 - The plugin keeps a modal operator running for the Z-up orbit. Align is handled; if another native tool refuses to start, please open an issue.
-- Native navigation (middle-mouse orbit when the plugin's orbit is off, the view cube, Align to Ground) remains Y-up. Use the plugin's orbit or the view buttons.
-- While the Z-up orbit is active, native tools that need their own modal (for example Align point picking) wait until you press Esc. The plugin will not start its orbit while another modal is running.
+- LichtFeld's own Align to Ground stays Y-up and does not know about the plugin. Use the plugin's orbit or the view buttons.
 - Coordinates are shown as LichtFeld reads them: if `centralize_dataset` was used at import, they are translated.
 - In independent split view, the overlay follows the main viewport.
 
@@ -72,4 +71,4 @@ Plugin che fa vedere la scena come in Metashape, CloudCompare o un CAD: **XY in 
 
 Per installarlo: **Strumenti → Marketplace plugin**, scrivi `Tonysa87/lichtfeld-zup-view` e clicca **Installa plugin**. Gli altri metodi sono in [INSTALL.md](INSTALL.md). Compare la scheda **Z-up View**, in italiano se LichtFeld è in italiano.
 
-Per la prima prova usa **Stato e diagnostica → Esegui diagnostica**, poi Pianta, Fronte e l'orbita Z-up (tasto centrale, Esc per uscire). Con coordinate UTM o comunque grandi, reimporta con `centralize_dataset` attivo: il viewport lavora in float32.
+Per la prima prova usa **Stato e diagnostica → Esegui diagnostica**, poi Pianta, Fronte e l'orbita Z-up (tasto centrale, sempre attiva). Con coordinate UTM o comunque grandi, reimporta con `centralize_dataset` attivo: il viewport lavora in float32.
