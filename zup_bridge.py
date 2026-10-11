@@ -34,9 +34,11 @@ class ZupSettings:
         "show_grid", "show_triad", "show_origin_axes", "show_hud",
         "grid_step", "grid_auto_step", "grid_half_size", "grid_major_every", "grid_follow_target",
         "orbit_sensitivity", "invert_yaw", "invert_pitch", "orbit_button_idx",
-        "step_deg", "ortho_for_axis_views", "language", "native_grid_xy_on_load", "replace_native_gizmo",
-        "always_orbit", "override_home_focus",
+        "step_deg", "ortho_for_axis_views", "language",
     )
+    # Comportamenti di base (orbita Z-up, gizmo Z-up, griglia nativa su XY,
+    # Home/Focus Z-up): sempre attivi a ogni avvio del plugin, non salvati.
+    # Dal pannello si possono spegnere solo per la sessione corrente.
 
     def __init__(self):
         # overlay
@@ -63,7 +65,7 @@ class ZupSettings:
         self.replace_native_gizmo = True    # gizmo nativo (assi interni) sostituito dal nostro
         self.gizmo_markers = []             # [(x, y, raggio, vista)] per il clic
         self._native_gizmo_hidden = False
-        self.always_orbit = True            # orbita Z-up sempre attiva sul tasto centrale
+        self.always_orbit = True            # orbita Z-up sempre attiva (fissa, non dal pannello)
         self.override_home_focus = True     # Home/Focus (pulsanti e tasti H/F) in versione Z-up
         self._last_orbit_attempt = 0.0
         self._toolbar_patch = None

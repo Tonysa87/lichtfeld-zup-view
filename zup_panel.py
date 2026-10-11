@@ -18,7 +18,6 @@ from . import zup_bridge as zb
 from . import zup_core as zc
 from . import zup_diag
 from . import zup_i18n as i18n
-from . import zup_ops
 from .zup_i18n import t
 
 COL_OK = (0.55, 0.85, 0.55, 1.0)
@@ -113,18 +112,11 @@ class ZupPanel(lf.ui.Panel):
 
     def _navigation(self, ui):
         S = zb.S
-        # stato + pulsante: stessi due widget in entrambi i casi
+        # stato: sempre lo stesso widget (attiva / in pausa)
         if S.modal_active:
             ui.text_colored(t("orbit_on_label"), COL_OK)
         else:
-            ui.text_colored(t("orbit_off_label"), COL_INFO)
-        if ui.button_styled(t("orbit_off_btn") if S.modal_active else t("orbit_on_btn"), "primary"):
-            if S.modal_active:
-                S.always_orbit = False  # altrimenti si riaccenderebbe da sola
-                zup_ops.stop_modal()
-            else:
-                zup_ops.start_modal()
-        _, S.always_orbit = ui.checkbox(t("always_orbit"), S.always_orbit)
+            ui.text_colored(t("orbit_paused_label"), COL_INFO)
         _, S.override_home_focus = ui.checkbox(t("override_home"), S.override_home_focus)
         ui.text_disabled(t("orbit_note"))
 

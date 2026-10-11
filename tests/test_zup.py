@@ -137,11 +137,21 @@ zb.go_standard_view("front")
 check(opA.modal(None, EA(type="KEY_F")) == {"RUNNING_MODAL"} and lf._focus_calls[0] == 2 and screen_dirs()["Z"][1] > 0.99, "tasto F: focus Z-up")
 check(opA.modal(None, EA(type="KEY_H")) == {"RUNNING_MODAL"}, "tasto H: home Z-up")
 check(opA.modal(None, EA(type="KEY_F", ctrl=True)) == {"PASS_THROUGH"}, "Ctrl+F passa (scorciatoie native)")
-# pulsante Stop: spegne anche 'sempre attiva'
-zb.S.modal_active = True
-zup_panel.ZupPanel().draw(type("U", (), {"__getattr__": lambda s, n: (lambda *a, **k: (a[0] == "Stop Z-up orbit" or a[0] == "Disattiva orbita Z-up") if n == "button_styled" else (True if n == "collapsing_header" else ((False, a[1]) if n in ("checkbox", "slider_float", "input_float", "input_int", "combo") else None)))})())
-check(not zb.S.always_orbit and not zb.S.modal_active, "Stop: orbita spenta e non si riaccende")
-# da qui i test storici lavorano con l'orbita manuale
+# il pannello non offre piu' modi di spegnere l'orbita
+class LabelUI:
+    def __init__(s): s.labels = []
+    def __getattr__(s, n):
+        def f(*a, **k):
+            if a and isinstance(a[0], str): s.labels.append(a[0])
+            if n == "collapsing_header": return True
+            if n in ("checkbox", "slider_float", "input_float", "input_int", "combo"): return (False, a[1])
+            return False
+        return f
+lu = LabelUI(); zup_panel.ZupPanel().draw(lu)
+check(not any("Disattiva" in l or "Attiva orbita" in l or "sempre attiva (tasto" in l for l in lu.labels), "nessun pulsante o casella per spegnere l'orbita")
+check("always_orbit" not in zb.S.PERSISTED and "replace_native_gizmo" not in zb.S.PERSISTED, "comportamenti di base non salvati: attivi a ogni avvio")
+# da qui i test storici provano l'operatore in modalita' manuale (solo interna)
+zb.S.always_orbit = False
 lf.ui.ops.invoked.clear(); lf.ui.ops.modal[0] = False; zb.S.modal_active = False
 check(zb.S.grid_major_every == 5 and zb.S.invert_yaw is True, "impostazioni caricate da data_dir")
 from zup_view import zup_i18n
@@ -388,7 +398,7 @@ lf.get_render_settings = _orig
 zup_overlay.draw(Ctx()); check(lf._rs.p["grid_plane"] == "2" and not zb.S._native_grid_pending, "applicato al primo frame utile")
 zup_view.on_unload()
 # opzione disattivata: nessuna modifica
-zb.S.native_grid_xy_on_load = False; zb.maybe_save_settings(force=True); lf._rs.p["grid_plane"] = "1"
+zb.S.native_grid_xy_on_load = False; lf._rs.p["grid_plane"] = "1"
 zup_view.on_load(); check(lf._rs.p["grid_plane"] == "1", "opzione spenta: griglia nativa non toccata")
 zup_view.on_unload()
 print("\nFALLITI:", fails)
