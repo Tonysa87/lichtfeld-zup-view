@@ -259,6 +259,34 @@ lf.ui.ops.modal[0] = True
 check((not zup_ops.start_modal()) and not zb.S.modal_active and zb.S.last_error != "", f"start rifiutato con un altro modale attivo: '{zb.S.last_error}'")
 lf.ui.ops.modal[0] = False
 
+# layout stabile: in ogni contenitore non dinamico la sequenza di widget non cambia
+DYNAMIC = {"zup_warn", "zup_msg", "zup_grid_step", "zup_grid_warn", "zup_state_info", "zup_diag"}
+class SeqUI:
+    def __init__(s, open_sections=True): s.stack = ["root"]; s.seq = {}; s.open = open_sections
+    def begin_child(s, key, size, border=False): s.seq.setdefault(s.stack[-1], []).append("child:" + key); s.stack.append(key)
+    def end_child(s): s.stack.pop()
+    def __getattr__(s, n):
+        def f(*a, **k):
+            s.seq.setdefault(s.stack[-1], []).append(n)
+            if n == "collapsing_header": return s.open
+            if n in ("checkbox", "slider_float", "input_float", "input_int", "combo"): return (False, a[1])
+            return False
+        return f
+def layout(**state):
+    saved = {k: getattr(zb.S, k) for k in state}
+    for k, v in state.items(): setattr(zb.S, k, v)
+    u = SeqUI(state.pop("_open", True) if "_open" in state else True)
+    zup_panel.ZupPanel().draw(u)
+    for k, v in saved.items(): setattr(zb.S, k, v)
+    return {c: q for c, q in u.seq.items() if c not in DYNAMIC}
+base = layout()
+variants = [layout(modal_active=True), layout(grid_auto_step=False), layout(orbit_button_idx=1),
+            layout(large_coords=True), layout(grid_truncated=True), layout(diagnostics=["a", "b", "c"]),
+            layout(last_error="x"), layout(scene_center=None)]
+check(all(v == base for v in variants), "layout del pannello stabile in tutti gli stati (nessun widget condizionale fuori dai box)")
+closed = SeqUI(False); zup_panel.ZupPanel().draw(closed)
+check(closed.seq["root"] == base["root"], "sezioni chiuse: sequenza principale invariata")
+
 # ---------------------------------------------------------------- operatore modale
 r0 = lf._redraws[0]
 check(zup_ops.start_modal() and zb.S.modal_active, f"start_modal: un solo invoke con l'id corretto {lf.ui.ops.invoked}")

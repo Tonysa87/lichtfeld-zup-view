@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.2 (2026-10-11)
+
+- Panel layout fix: widgets no longer go missing or out of order after opening or closing a section or switching the orbit on and off. LichtFeld's immediate-mode layout matches widgets by position, so each section now lives in a stable child container and every variable part has its own container.
+- The status line under Navigation now also shows when the Z-up orbit is off.
+
 ## 0.2.1 (2026-10-11)
 
 - Supports LichtFeld Studio 0.5.4, the latest release: every host API the plugin uses is identical in 0.5.4 and 0.5.5. The minimum is now `>=0.5.4`.
