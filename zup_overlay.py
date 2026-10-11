@@ -145,6 +145,13 @@ def _draw_gizmo(ctx, origin, size, f, r, u):
     cx = origin[0] + size[0] - GIZMO_MARGIN * sc - half
     cy = origin[1] + GIZMO_MARGIN * sc + half
     rad = max(6.0, _GIZMO_R * half)
+    # Il gizmo nativo viene disegnato comunque dal renderer (spegnere il suo
+    # pannello toglie solo clic e trascinamento): lo copriamo con un disco
+    # opaco. L'overlay Python e' disegnato dopo, quindi sta sopra.
+    bg = zb.background_rgb()
+    ctx.draw_filled_circle_2d((cx, cy), half * 0.98,
+                              (bg[0] * 0.8 + 0.07, bg[1] * 0.8 + 0.07, bg[2] * 0.8 + 0.08, 1.0))
+    ctx.draw_circle_2d((cx, cy), half * 0.98, (0.45, 0.45, 0.48, 0.55), 1.0 * sc)
     items = []
     for name, a, col, pos_view, neg_view in _GIZMO_AXES:
         for sign, view in ((1.0, pos_view), (-1.0, neg_view)):
@@ -198,6 +205,7 @@ def draw(ctx):
         zb.reconcile_modal_state()
         if S._native_grid_pending:
             zb.apply_native_grid_on_load()
+        zb.ensure_orbit()
         cam = zb.get_camera_data()
         if cam is None:
             return

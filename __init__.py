@@ -22,6 +22,7 @@ def on_load():
         lf.register_class(cls)
     zup_bridge.apply_native_grid_on_load()
     zup_bridge.apply_gizmo_setting()
+    zup_bridge.patch_toolbar()
     try:
         zup_overlay.register()
     except Exception as e:
@@ -36,6 +37,7 @@ def on_unload():
     zup_bridge.maybe_save_settings(force=True)
     zup_bridge.restore_native_grid_on_unload()
     zup_bridge.restore_native_gizmo()
+    zup_bridge.unpatch_toolbar()
     zup_overlay.unregister()
     for cls in reversed(_classes):
         try:

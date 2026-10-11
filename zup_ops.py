@@ -47,8 +47,9 @@ class ZupOrbitOperator(Operator):
         self._dragging = False
         self._last = None
         zb.S.modal_active = True
-        zb.level_view()
-        zb._set_msg(t("msg_orbit_on"))
+        if not zb.S.always_orbit:
+            zb.level_view()
+            zb._set_msg(t("msg_orbit_on"))
         zb.request_redraw()
         return MODAL
 
@@ -80,7 +81,18 @@ class ZupOrbitOperator(Operator):
         ev = getattr(event, "value", "")
 
         if et == "ESC" and ev == "PRESS":
+            if zb.S.always_orbit:
+                return PASS  # sempre attiva: Esc resta agli altri strumenti
             return self._finish(CANCELLED)
+
+        if ev == "PRESS" and zb.S.override_home_focus and not self._dragging \
+                and not (getattr(event, "ctrl", False) or getattr(event, "shift", False) or getattr(event, "alt", False)):
+            if et == "KEY_H":
+                zb.home_zup()
+                return MODAL
+            if et == "KEY_F":
+                zb.focus_selection_zup()
+                return MODAL
 
         if self._dragging:
             if et == self._button() and ev == "RELEASE":
@@ -144,20 +156,22 @@ def operator_id() -> str:
     return ZupOrbitOperator._class_id()
 
 
-def start_modal() -> bool:
+def start_modal(quiet: bool = False) -> bool:
     if zb.modal_busy():
         # LichtFeld non annullerebbe il modale esistente: rischio di due modali attivi
-        zb._set_err(t("err_modal_busy"))
+        if not quiet:
+            zb._set_err(t("err_modal_busy"))
         return False
     try:
         res = lf.ui.ops.invoke(operator_id())
     except Exception as e:
         zb.S.modal_active = False
-        zb._set_err(t("err_modal_start"), e)
+        if not quiet:
+            zb._set_err(t("err_modal_start"), e)
         return False
     running = bool(getattr(res, "running_modal", False)) or getattr(res, "status", "") == "RUNNING_MODAL"
     zb.S.modal_active = running
-    if not running:
+    if not running and not quiet:
         zb._set_err(t("err_modal_state", status=getattr(res, "status", res)))
     return running
 

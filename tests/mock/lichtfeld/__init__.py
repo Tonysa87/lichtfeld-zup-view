@@ -64,7 +64,7 @@ _scene=[None]
 def get_scene(): return _scene[0]
 
 class _RS:
-    def __init__(s): s.p={'show_grid':True,'grid_plane':'1','grid_opacity':0.5}
+    def __init__(s): s.p={'show_grid':True,'grid_plane':'1','grid_opacity':0.5,'background_color':(0.1,0.1,0.12)}
     def get_all_properties(s): return dict(s.p)
     def get(s,k): return s.p[k]
     def set(s,k,v):
@@ -93,11 +93,22 @@ class Panel: pass
 _lang=["it"]; _redraws=[0]
 def _req(delay=0.0): _redraws[0]+=1
 _panels={"native.viewport_gizmo": True}
+_tool=[""]
+_focus_calls=[0]
+def focus_selection():
+    """Come focusOnBounds: inquadra mantenendo la direzione, ma con up = Y del viewport."""
+    global _cam
+    _focus_calls[0]+=1
+    e,t=np.array(_cam.eye,float),np.array(_cam.target,float)
+    set_camera(tuple(e), tuple(t), (0.0,1.0,0.0))
+    return True
+def reset_camera(): set_camera((0,0,10),(0,0,0),(0,1,0))
 def _set_panel_enabled(pid, en):
     if pid not in _panels: raise KeyError(pid)
     _panels[pid]=bool(en)
 ui=types.SimpleNamespace(Panel=Panel,PanelSpace=PanelSpace,ops=_UiOps(),get_current_language=lambda: _lang[0],request_redraw=_req,
-                         set_panel_enabled=_set_panel_enabled,is_panel_enabled=lambda p: _panels[p],get_ui_scale=lambda: 1.0)
+                         set_panel_enabled=_set_panel_enabled,is_panel_enabled=lambda p: _panels[p],get_ui_scale=lambda: 1.0,
+                         get_active_tool=lambda: _tool[0])
 
 class _Settings:
     store={}

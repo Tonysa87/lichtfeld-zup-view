@@ -21,6 +21,8 @@ Requires LichtFeld Studio ≥ 0.5.4. For other methods (Python console, manual c
 - **Views:** Frame scene, Plan, From below, Front (from South), Back (from North), Right (from East), Left (from West), Isometric. Plan and elevations can switch to orthographic. In plan, X points right and Y (North) points up.
 - **Level view:** keeps the camera position and pivot, makes Z vertical. In plan view it keeps the current map orientation.
 - **Z-up orbit (modal):** while active, the middle mouse button (or Alt + left mouse) orbits around the vertical axis through the pivot. Pan (right mouse), zoom (wheel), selection and gizmos stay native. Press Esc to exit.
+- **Always on (default):** the Z-up orbit stays active, so the middle mouse never falls back to LichtFeld's Y-up orbit. It pauses during other tools' modal actions and the Align tool.
+- **Home and Focus in Z-up:** the buttons under the gizmo and the H and F keys frame the scene or the selection, keeping Z up.
 - **Step rotation:** ±N° buttons, horizontally and vertically. These work even without the modal.
 - **XY grid** at a chosen height (default: estimated floor), automatic 1-2-5 spacing, major lines, X axis in red and Y axis in green. It is aligned in both perspective and orthographic views.
 - **Native grid on XY:** when the plugin starts, LichtFeld's own grid moves to the data XY plane at Z = 0, and the previous plane is restored when the plugin unloads. This is optional, and buttons let you switch it by hand.
@@ -32,7 +34,8 @@ Requires LichtFeld Studio ≥ 0.5.4. For other methods (Python console, manual c
 
 ## Known limits
 
-- Clicking the Z-up gizmo snaps views only while the Z-up orbit is active; otherwise use the view buttons.
+- Clicking the Z-up gizmo snaps views only while the Z-up orbit is active (always, by default).
+- With "always on" enabled, the plugin keeps a modal operator running. Native tools that refuse to start while a modal is active may need the orbit switched off; Align is already handled.
 - Native navigation (middle-mouse orbit when the plugin's orbit is off, the view cube, Align to Ground) remains Y-up. Use the plugin's orbit or the view buttons.
 - While the Z-up orbit is active, native tools that need their own modal (for example Align point picking) wait until you press Esc. The plugin will not start its orbit while another modal is running.
 - Coordinates are shown as LichtFeld reads them: if `centralize_dataset` was used at import, they are translated.

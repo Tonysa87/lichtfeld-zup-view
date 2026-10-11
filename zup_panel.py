@@ -120,9 +120,12 @@ class ZupPanel(lf.ui.Panel):
             ui.text_colored(t("orbit_off_label"), COL_INFO)
         if ui.button_styled(t("orbit_off_btn") if S.modal_active else t("orbit_on_btn"), "primary"):
             if S.modal_active:
+                S.always_orbit = False  # altrimenti si riaccenderebbe da sola
                 zup_ops.stop_modal()
             else:
                 zup_ops.start_modal()
+        _, S.always_orbit = ui.checkbox(t("always_orbit"), S.always_orbit)
+        _, S.override_home_focus = ui.checkbox(t("override_home"), S.override_home_focus)
         ui.text_disabled(t("orbit_note"))
 
         _, S.orbit_button_idx = ui.combo(t("gesture"), S.orbit_button_idx, [t("gesture_mmb"), t("gesture_alt")])

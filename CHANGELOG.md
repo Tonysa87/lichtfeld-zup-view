@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.3 (2026-10-11)
+
+- Z-up orbit always on (default): the middle mouse always orbits around Z, so native navigation no longer pulls the view back to Y-up after a view button. It pauses by itself while another tool runs a modal action (for example a selection rectangle) and while the Align tool is active, then comes back. Esc no longer turns it off; use the Stop button or the checkbox.
+- Home and Focus under the gizmo now work in Z-up. Home frames the whole scene in a Z-up isometric view. Focus keeps LichtFeld's framing of the selection, then levels the horizon with Z up. The H and F keys do the same while the Z-up orbit is active. Optional.
+- Z-up gizmo: an opaque backdrop now fully covers LichtFeld's gizmo. The renderer still draws it after its panel is disabled; disabling the panel only removes its clicks and dragging.
+
 ## 0.2.2 (2026-10-11)
 
 - Panel layout fix: widgets no longer go missing or out of order after opening or closing a section or switching the orbit on and off. LichtFeld's immediate-mode layout matches widgets by position, so each section now lives in a stable child container and every variable part has its own container.

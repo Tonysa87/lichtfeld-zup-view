@@ -35,6 +35,7 @@ class ZupSettings:
         "grid_step", "grid_auto_step", "grid_half_size", "grid_major_every", "grid_follow_target",
         "orbit_sensitivity", "invert_yaw", "invert_pitch", "orbit_button_idx",
         "step_deg", "ortho_for_axis_views", "language", "native_grid_xy_on_load", "replace_native_gizmo",
+        "always_orbit", "override_home_focus",
     )
 
     def __init__(self):
@@ -62,6 +63,10 @@ class ZupSettings:
         self.replace_native_gizmo = True    # gizmo nativo (assi interni) sostituito dal nostro
         self.gizmo_markers = []             # [(x, y, raggio, vista)] per il clic
         self._native_gizmo_hidden = False
+        self.always_orbit = True            # orbita Z-up sempre attiva sul tasto centrale
+        self.override_home_focus = True     # Home/Focus (pulsanti e tasti H/F) in versione Z-up
+        self._last_orbit_attempt = 0.0
+        self._toolbar_patch = None
         self._native_grid_prev_plane = None
 
         # stato runtime
@@ -595,3 +600,123 @@ def ui_scale() -> float:
         return max(1.0, float(lf.ui.get_ui_scale()))
     except Exception:
         return 1.0
+
+
+# --------------------------------------------------------------------------- #
+# Home / Focus in versione Z-up
+# --------------------------------------------------------------------------- #
+HOME_DISTANCE_EMPTY = 10.0
+
+
+def home_zup() -> bool:
+    """Home: inquadra tutta la scena in isometrica Z-up. Senza scena,
+    isometrica Z-up sull'origine (come la Home nativa, ma dritta)."""
+    if frame_scene():
+        return True
+    S.scene_center = S.scene_min = S.scene_max = None
+    eye, target, up = zc.standard_view("iso", (0.0, 0.0, 0.0), HOME_DISTANCE_EMPTY)
+    set_ortho(False)
+    ok = set_camera_data(eye, target, up)
+    if ok:
+        _set_msg(t("msg_view", name=i18n.view_label("iso")))
+    return ok
+
+
+def focus_selection_zup() -> bool:
+    """Focus: inquadratura nativa della selezione (stessa direzione di vista),
+    poi orizzonte rimesso in bolla con Z in alto. focusOnBounds di LichtFeld
+    e' istantaneo ma ricalcola il roll con Y in alto."""
+    try:
+        lf.focus_selection()
+    except Exception as e:
+        _set_err("focus_selection", e)
+        return False
+    return level_view()
+
+
+def patch_toolbar() -> bool:
+    """Fa usare ai pulsanti Home e Focus sotto il gizmo le funzioni Z-up.
+    La barra e' Python (lfs_plugins.toolbar._UtilityToolbarController.dispatch):
+    la avvolgiamo e la ripristiniamo allo scarico."""
+    if S._toolbar_patch is not None:
+        return True
+    try:
+        from lfs_plugins import toolbar as tb
+
+        cls = tb._UtilityToolbarController
+        original = cls.dispatch
+    except Exception:
+        return False
+
+    def dispatch(self, action, value, _orig=original):
+        if S.override_home_focus:
+            if action == "home":
+                home_zup()
+                return None
+            if action == "focus_selection":
+                focus_selection_zup()
+                return None
+        return _orig(self, action, value)
+
+    dispatch._zup_original = original
+    cls.dispatch = dispatch
+    S._toolbar_patch = (cls, original)
+    return True
+
+
+def unpatch_toolbar() -> None:
+    patch = S._toolbar_patch
+    S._toolbar_patch = None
+    if patch is None:
+        return
+    cls, original = patch
+    try:
+        if getattr(cls.dispatch, "_zup_original", None) is original:
+            cls.dispatch = original
+    except Exception:
+        pass
+
+
+# --------------------------------------------------------------------------- #
+# Orbita Z-up sempre attiva
+# --------------------------------------------------------------------------- #
+ORBIT_RETRY_S = 0.75
+
+
+def ensure_orbit() -> None:
+    """Riaccende l'orbita Z-up quando nessun altro strumento ha un modale attivo
+    (es. dopo una selezione a rettangolo). Non lo fa con lo strumento Align,
+    che ha bisogno di nessun modale per selezionare i punti."""
+    if not S.always_orbit or S.modal_active:
+        return
+    now = time.monotonic()
+    if now - S._last_orbit_attempt < ORBIT_RETRY_S:
+        return
+    S._last_orbit_attempt = now
+    if modal_busy():
+        return
+    try:
+        tool = str(lf.ui.get_active_tool() or "").lower()
+        if "align" in tool:
+            return
+    except Exception:
+        pass
+    from . import zup_ops
+
+    zup_ops.start_modal(quiet=True)
+
+
+_bg_cache = {"t": 0.0, "rgb": (0.0, 0.0, 0.0)}
+
+
+def background_rgb():
+    """Colore di sfondo del viewport (render settings), letto al massimo 2 volte al secondo."""
+    now = time.monotonic()
+    if now - _bg_cache["t"] > 0.5:
+        _bg_cache["t"] = now
+        try:
+            c = lf.get_render_settings().get("background_color")
+            _bg_cache["rgb"] = (float(c[0]), float(c[1]), float(c[2]))
+        except Exception:
+            pass
+    return _bg_cache["rgb"]

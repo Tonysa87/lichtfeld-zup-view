@@ -107,6 +107,42 @@ zup_view.on_load()
 check(zup_overlay.HANDLER_ID in lf._handlers, "overlay registrato")
 check(lf._rs.p["grid_plane"] == "2", "all'avvio la griglia nativa va sul piano XY dei dati")
 check(lf._panels["native.viewport_gizmo"] is False, "all'avvio il gizmo nativo viene nascosto")
+
+# ---- orbita sempre attiva, Home/Focus Z-up
+from lfs_plugins import toolbar as tb
+check(zb.S.always_orbit and zb.S._toolbar_patch is not None, "default: orbita sempre attiva, barra Home/Focus agganciata")
+zb.S._last_orbit_attempt = 0; zup_overlay.draw(Ctx())
+check(zb.S.modal_active and len(lf.ui.ops.invoked) == 1, "orbita Z-up avviata da sola al primo frame")
+opA = zup_ops.ZupOrbitOperator(); opA.invoke(None, None)
+EA = lambda **k: types.SimpleNamespace(**{"type": "", "value": "PRESS", "mouse_x": 800., "mouse_y": 400., "delta_x": 0., "delta_y": 0., "alt": False, "ctrl": False, "shift": False, "over_gui": False, **k})
+check(opA.modal(None, EA(type="ESC")) == {"PASS_THROUGH"} and zb.S.modal_active, "sempre attiva: Esc passa agli altri strumenti")
+# un modale nativo (selezione) la sostituisce: stato riallineato, poi riaccesa quando finisce
+lf.ui.ops.modal[0] = False; zb.S._last_orbit_attempt = 1e18; zup_overlay.draw(Ctx())
+check(not zb.S.modal_active, "modale nativo: orbita sospesa")
+lf._tool[0] = "builtin.align"; zb.S._last_orbit_attempt = 0; zup_overlay.draw(Ctx())
+check(not zb.S.modal_active, "con lo strumento Align non si riaccende")
+lf._tool[0] = ""; zb.S._last_orbit_attempt = 0; zup_overlay.draw(Ctx())
+check(zb.S.modal_active, "finito lo strumento: orbita riaccesa")
+# pulsanti Home/Focus sotto il gizmo
+lf.set_camera(zc.data_to_vis((0, -10, 3)), zc.data_to_vis((0, 0, 0)), (0, 1, 0))
+tb._UtilityToolbarController().dispatch("home", "")
+d = screen_dirs(); check(d["Z"][1] > 0 and abs(d["Z"][0]) < 1e-3 and "home" not in tb.calls, "Home: vista Z-up invece del reset nativo")
+zb.go_standard_view("front"); lf.ui.ops.modal[0] = True
+tb._UtilityToolbarController().dispatch("focus_selection", "")
+d = screen_dirs(); check(lf._focus_calls[0] == 1 and d["Z"][1] > 0.99, "Focus: inquadratura nativa poi Z in alto")
+tb._UtilityToolbarController().dispatch("set_camera_navigation_mode", "orbit")
+check(tb.calls == ["set_camera_navigation_mode"], "altre azioni della barra invariate")
+# tasti H e F con l'orbita attiva
+zb.go_standard_view("front")
+check(opA.modal(None, EA(type="KEY_F")) == {"RUNNING_MODAL"} and lf._focus_calls[0] == 2 and screen_dirs()["Z"][1] > 0.99, "tasto F: focus Z-up")
+check(opA.modal(None, EA(type="KEY_H")) == {"RUNNING_MODAL"}, "tasto H: home Z-up")
+check(opA.modal(None, EA(type="KEY_F", ctrl=True)) == {"PASS_THROUGH"}, "Ctrl+F passa (scorciatoie native)")
+# pulsante Stop: spegne anche 'sempre attiva'
+zb.S.modal_active = True
+zup_panel.ZupPanel().draw(type("U", (), {"__getattr__": lambda s, n: (lambda *a, **k: (a[0] == "Stop Z-up orbit" or a[0] == "Disattiva orbita Z-up") if n == "button_styled" else (True if n == "collapsing_header" else ((False, a[1]) if n in ("checkbox", "slider_float", "input_float", "input_int", "combo") else None)))})())
+check(not zb.S.always_orbit and not zb.S.modal_active, "Stop: orbita spenta e non si riaccende")
+# da qui i test storici lavorano con l'orbita manuale
+lf.ui.ops.invoked.clear(); lf.ui.ops.modal[0] = False; zb.S.modal_active = False
 check(zb.S.grid_major_every == 5 and zb.S.invert_yaw is True, "impostazioni caricate da data_dir")
 from zup_view import zup_i18n
 mk = zup_i18n.missing_keys()
@@ -192,7 +228,7 @@ check(abs(zc.view_heading_deg((-10, 0, 5), (0, 0, 0)) - 90.0) < 1e-9, "heading: 
 # ---------------------------------------------------------------- overlay prospettico
 zb.go_standard_view("iso"); zb.S.show_origin_axes = True
 ctx = Ctx(); zup_overlay.draw(ctx)
-check(zb.S.last_error == "" and len(ctx.l3) > 20 and len(ctx.l2) == 6 and len(ctx.circ) == 9 and len(ctx.t) >= 7,
+check(zb.S.last_error == "" and len(ctx.l3) > 20 and len(ctx.l2) == 6 and len(ctx.circ) == 11 and len(ctx.t) >= 7,
       f"overlay prospettico: {len(ctx.l3)} linee 3D, {len(ctx.l2)} linee 2D (triade+gizmo), {len(ctx.circ)} cerchi, {len(ctx.t)} testi, err='{zb.S.last_error}'")
 check(np.allclose(zb.S.viewport_origin, VP_POS, atol=1e-3), f"origine viewport ricavata {zb.S.viewport_origin}")
 check(all(p[0] >= VP_POS[0] and p[1] >= VP_POS[1] for p, _ in ctx.t), "HUD e triade dentro il viewport (offset applicato)")
@@ -339,6 +375,7 @@ check(not zb.S.modal_active, "stato riallineato quando LichtFeld toglie il modal
 
 zup_view.on_unload(); check(not lf._handlers and not lf._registered, "unload pulito (senza cancel_modal globale)")
 check(lf._panels["native.viewport_gizmo"] is True, "allo scarico il gizmo nativo torna visibile")
+check(tb._UtilityToolbarController.dispatch.__name__ == "dispatch" and not hasattr(tb._UtilityToolbarController.dispatch, "_zup_original"), "allo scarico la barra torna originale")
 # ciclo completo: piano originale -> XY all'avvio -> ripristino allo scarico
 lf._rs.p["grid_plane"] = "1"
 zup_view.on_load(); check(lf._rs.p["grid_plane"] == "2", "ricarico: griglia su XY")
