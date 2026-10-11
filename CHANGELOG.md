@@ -2,6 +2,9 @@
 
 ## 0.2.4 (2026-10-11)
 
+Tested and working on LichtFeld Studio 0.5.4 (Windows).
+
+
 - Everything is set up as soon as the plugin is active. The Z-up orbit is always on and the panel no longer offers a way to switch it off; it still pauses by itself during other tools' modal actions and the Align tool.
 - The Z-up gizmo, native grid on XY and Z-up Home/Focus are on at every start. Their checkboxes only apply to the current session and are no longer saved.
 

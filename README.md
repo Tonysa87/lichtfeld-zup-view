@@ -4,7 +4,7 @@ A survey-style viewport for scenes whose data is **Z-up** (XY horizontal, +Z up)
 
 It changes **only how the scene is viewed**: camera views, a turntable orbit around Z, a Z-up orientation gizmo, an XY grid and a HUD. Scene data, node transforms and exports are never modified.
 
-**Version 0.2.4.** Tested on LichtFeld Studio 0.5.4 (Windows); testing on real Metashape scenes is in progress. Changes are listed in [CHANGELOG.md](CHANGELOG.md).
+**Version 0.2.4: tested and working** on LichtFeld Studio 0.5.4 (Windows). Changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
 *Italiano più sotto.*
 
@@ -121,6 +121,8 @@ Copyright © 2026 Antonio Sartini. Released under GPL-3.0-or-later, the same lic
 ## Italiano
 
 Plugin che fa vedere la scena come in Metashape, CloudCompare o un CAD: **XY in piano, +Z in alto**. Agisce solo sul viewport, quindi dati, trasformazioni ed export restano identici.
+
+**Versione 0.2.4: provata e funzionante** su LichtFeld Studio 0.5.4 (Windows).
 
 **Installazione.** Apri **Strumenti → Marketplace plugin**, scrivi `Tonysa87/lichtfeld-zup-view` e clicca **Installa plugin**. Gli altri metodi sono in [INSTALL.md](INSTALL.md). Compare la scheda **Z-up View**, in italiano se LichtFeld è in italiano.
 
