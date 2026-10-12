@@ -5,6 +5,9 @@ ruotati di 180 gradi attorno a X. Con dati da rilievo (Metashape, Z in alto)
 il pavimento appare verticale. Questo plugin cambia solo il modo di guardare
 la scena: viste standard, orbita attorno a Z, griglia sul piano XY, triade
 degli assi. Nessun dato della scena viene modificato.
+
+Dove LichtFeld ha la navigazione Z-up nativa (set_navigation_up_axis) il
+plugin la attiva e le lascia l'orbita.
 """
 
 import lichtfeld as lf
@@ -21,6 +24,8 @@ def on_load():
     for cls in _classes:
         lf.register_class(cls)
     zup_bridge.apply_native_grid_on_load()
+    zup_bridge.apply_native_up_axis()
+    zup_bridge.init_host_watch()
     zup_bridge.apply_gizmo_setting()
     zup_bridge.patch_toolbar()
     try:
@@ -36,6 +41,7 @@ def on_unload():
     stop_modal()
     zup_bridge.maybe_save_settings(force=True)
     zup_bridge.restore_native_grid_on_unload()
+    zup_bridge.restore_native_up_axis()
     zup_bridge.restore_native_gizmo()
     zup_bridge.unpatch_toolbar()
     zup_overlay.unregister()

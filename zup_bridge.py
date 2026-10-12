@@ -35,6 +35,7 @@ class ZupSettings:
         "grid_step", "grid_auto_step", "grid_half_size", "grid_major_every", "grid_follow_target",
         "orbit_sensitivity", "invert_yaw", "invert_pitch", "orbit_button_idx",
         "step_deg", "ortho_for_axis_views", "language",
+        "native_zup_per_project", "auto_home_on_load",
     )
     # Comportamenti di base (orbita Z-up, gizmo Z-up, griglia nativa su XY,
     # Home/Focus Z-up): sempre attivi a ogni avvio del plugin, non salvati.
@@ -66,7 +67,16 @@ class ZupSettings:
         self.gizmo_markers = []             # [(x, y, raggio, vista)] per il clic
         self._native_gizmo_hidden = False
         self.always_orbit = True            # orbita Z-up sempre attiva (fissa, non dal pannello)
+        self._orbit_dragging = False        # drag dell'orbita del plugin in corso
         self.override_home_focus = True     # Home/Focus (pulsanti e tasti H/F) in versione Z-up
+        self.native_zup_per_project = True  # verticale nativa "data_z" a ogni progetto/dataset (LichtFeld > 0.5.4)
+        self.auto_home_on_load = True       # dopo il caricamento dei dati: Home Z-up se la vista e' storta
+        self._native_up_prev = None         # verticale nativa del progetto prima del plugin
+        self._native_up_applied = False     # data_z confermata per il progetto corrente
+        self._project_key = None
+        self._scene_sig = None
+        self._home_pending_until = 0.0
+        self._last_watch_t = 0.0
         self._last_orbit_attempt = 0.0
         self._toolbar_patch = None
         self._native_grid_prev_plane = None
@@ -299,23 +309,42 @@ def reconcile_modal_state() -> None:
 # --------------------------------------------------------------------------- #
 # Bounding della scena (dalle posizioni delle gaussiane, in coordinate data)
 # --------------------------------------------------------------------------- #
+# Calcolato con i Tensor di LichtFeld (sort per colonna sulla GPU): il venv
+# del plugin non ha numpy, e get_means().numpy() fallirebbe.
 _SAMPLES_PER_NODE = 400_000
+BOUNDS_LO_PCT = 1.0
+BOUNDS_HI_PCT = 99.0
 
 
-def _tensor_sample_numpy(t, n_total: int):
-    """Sottocampiona un Tensor prima di copiarlo su CPU, se possibile."""
+def _tensor_bounds(t, n_total: int):
+    """Percentili 1-99 per colonna di un Tensor (N, 3); None se vuoto."""
     step = max(1, int(math.ceil(max(n_total, 1) / _SAMPLES_PER_NODE)))
     if step > 1:
         try:
-            return t[::step].cpu().numpy()
+            t = t[::step]
         except Exception:
             pass
-    return t.cpu().numpy()
+    try:
+        t = t[t.isfinite().all(1)]  # maschera di righe: scarta NaN e infiniti
+    except Exception:
+        pass
+    n = int(t.shape[0])
+    if n == 0:
+        return None
+    i_lo = zc.percentile_index(n, BOUNDS_LO_PCT)
+    i_hi = zc.percentile_index(n, BOUNDS_HI_PCT)
+    lo, hi = [], []
+    for j in range(3):
+        col, _ = t[:, j].contiguous().sort(0)
+        lo.append(float(col[i_lo].item()))
+        hi.append(float(col[i_hi].item()))
+    if not all(math.isfinite(v) for v in lo + hi):
+        return None
+    return tuple(lo), tuple(hi)
 
 
-def _node_points(node):
-    """Punti di un nodo nel sistema dati della scena (world transform applicata)."""
-    pts = None
+def _node_means(node):
+    """(Tensor delle posizioni, numero di punti) di un nodo, oppure None."""
     try:
         sd = node.splat_data()
     except Exception:
@@ -324,46 +353,49 @@ def _node_points(node):
         try:
             n = int(getattr(sd, "num_points", 0) or 0)
             if n > 0:
-                pts = _tensor_sample_numpy(sd.get_means(), n)
+                return sd.get_means(), n
         except Exception:
-            pts = None
-    if pts is None:
+            pass
+    try:
+        pc = node.point_cloud()
+    except Exception:
+        pc = None
+    if pc is not None:
         try:
-            pc = node.point_cloud()
+            n = int(getattr(pc, "size", 0) or 0)
+            if n > 0:
+                return pc.means, n
         except Exception:
-            pc = None
-        if pc is not None:
-            try:
-                n = int(getattr(pc, "size", 0) or 0)
-                if n > 0:
-                    pts = _tensor_sample_numpy(pc.means, n)
-            except Exception:
-                pts = None
-    if pts is None:
+            pass
+    return None
+
+
+def _node_bounds(node):
+    """Box del nodo nel sistema dati della scena (world transform applicata)."""
+    means = _node_means(node)
+    if means is None:
+        return None
+    box = _tensor_bounds(*means)
+    if box is None:
         return None
     try:
-        return zc.apply_transform_rowmajor(pts, node.world_transform)
+        return zc.transform_bounds_rowmajor(node.world_transform, *box)
     except Exception:
-        return pts
+        return box
 
 
-def _scene_points(scene):
-    import numpy as np
-
-    chunks = []
+def _scene_bounds(scene):
     try:
-        for node in scene.get_nodes():
-            p = _node_points(node)
-            if p is not None and len(p):
-                chunks.append(np.asarray(p).reshape(-1, 3))
+        boxes = [_node_bounds(node) for node in scene.get_nodes()]
     except Exception:
-        chunks = []
-    if chunks:
-        return np.vstack(chunks)
+        boxes = []
+    box = zc.merge_bounds(boxes)
+    if box is not None:
+        return box
     # ripiego: modello combinato (coordinate locali dei nodi, senza transform)
     model = scene.combined_model()
     if model is not None and model.num_points > 0:
-        return _tensor_sample_numpy(model.get_means(), model.num_points)
+        return _tensor_bounds(model.get_means(), model.num_points)
     return None
 
 
@@ -373,11 +405,12 @@ def compute_scene_bounds() -> bool:
         if scene is None:
             _set_err(t("err_no_scene"))
             return False
-        pts = _scene_points(scene)
-        if pts is None:
+        box = _scene_bounds(scene)
+        if box is None:
             _set_err(t("err_no_points"))
             return False
-        lo, hi, c = zc.robust_bounds(pts)
+        lo, hi = box
+        c = tuple((lo[i] + hi[i]) * 0.5 for i in range(3))
         S.scene_min, S.scene_max, S.scene_center = lo, hi, c
         S.grid_z = lo[2]
         size = max(hi[0] - lo[0], hi[1] - lo[1], 1e-3)
@@ -626,8 +659,9 @@ def home_zup() -> bool:
 
 def focus_selection_zup() -> bool:
     """Focus: inquadratura nativa della selezione (stessa direzione di vista),
-    poi orizzonte rimesso in bolla con Z in alto. focusOnBounds di LichtFeld
-    e' istantaneo ma ricalcola il roll con Y in alto."""
+    poi orizzonte rimesso in bolla con Z in alto. Fino a 0.5.4 focusOnBounds
+    ricalcola il roll con Y in alto; con la verticale nativa data_z e' gia'
+    corretto e level_view() non cambia nulla."""
     try:
         lf.focus_selection()
     except Exception as e:
@@ -655,7 +689,7 @@ def patch_toolbar() -> bool:
             if action == "home":
                 home_zup()
                 return None
-            if action == "focus_selection":
+            if action == "focus_selection" and not native_zup_active():
                 focus_selection_zup()
                 return None
         return _orig(self, action, value)
@@ -677,6 +711,162 @@ def unpatch_toolbar() -> None:
             cls.dispatch = original
     except Exception:
         pass
+
+
+# --------------------------------------------------------------------------- #
+# Navigazione Z-up nativa (LichtFeld dopo la 0.5.4, PR #3203)
+# --------------------------------------------------------------------------- #
+# lf.set_navigation_up_axis("data_z") fa orbitare LichtFeld attorno alla Z dei
+# dati (orbita, fly, drone, snap degli assi, Focus). La scelta e' del
+# progetto: un nuovo progetto torna a "legacy_y". Home, il gizmo e le viste
+# da rilievo restano al plugin.
+NATIVE_UP_DATA_Z = "data_z"
+NATIVE_UP_LEGACY_Y = "legacy_y"
+WATCH_INTERVAL_S = 0.5
+HOME_AFTER_LOAD_S = 4.0
+TILT_TOLERANCE = 0.05  # |right.z| oltre cui l'orizzonte e' storto (circa 3 gradi)
+
+
+def native_up_supported() -> bool:
+    return callable(getattr(lf, "set_navigation_up_axis", None)) and \
+        callable(getattr(lf, "get_navigation_up_axis", None))
+
+
+def native_up_axis() -> str | None:
+    if not native_up_supported():
+        return None
+    try:
+        return str(lf.get_navigation_up_axis())
+    except Exception:
+        return None
+
+
+def native_zup_active() -> bool:
+    """True se e' LichtFeld stesso a navigare con Z in alto: allora l'orbita
+    del plugin si fa da parte e il tasto centrale va all'orbita nativa."""
+    return native_up_axis() == NATIVE_UP_DATA_Z
+
+
+def apply_native_up_axis() -> bool:
+    """Porta la verticale di navigazione del progetto sulla Z dei dati."""
+    if not S.native_zup_per_project or not native_up_supported():
+        return False
+    current = native_up_axis()
+    if current == NATIVE_UP_DATA_Z:
+        S._native_up_applied = True
+        return True
+    try:
+        lf.set_navigation_up_axis(NATIVE_UP_DATA_Z, bool(S.native_grid_xy_on_load))
+    except Exception as e:
+        _set_err(t("err_native_up"), e)
+        return False
+    # All'avvio dell'app il controller camera puo' non esistere ancora:
+    # la chiamata non fa nulla e watch_host riprova.
+    if native_up_axis() != NATIVE_UP_DATA_Z:
+        return False
+    S._native_up_applied = True
+    if S._native_up_prev is None:
+        S._native_up_prev = current or NATIVE_UP_LEGACY_Y
+    _set_msg(t("msg_native_up"))
+    return True
+
+
+def restore_native_up_axis() -> None:
+    """Allo scarico rimette la verticale che aveva il progetto, solo se
+    l'abbiamo cambiata noi."""
+    prev = S._native_up_prev
+    S._native_up_prev = None
+    if prev is None or prev == NATIVE_UP_DATA_Z:
+        return
+    if native_up_axis() == NATIVE_UP_DATA_Z:
+        try:
+            lf.set_navigation_up_axis(prev, False)
+        except Exception:
+            pass
+
+
+def _project_key():
+    try:
+        return (lf.project_uuid(), lf.project_path())
+    except Exception:
+        return None
+
+
+def _scene_signature() -> tuple:
+    """Nomi dei nodi della scena: cambia quando si caricano o tolgono dati
+    (non con l'addestramento, che cambia solo il numero di gaussiane)."""
+    try:
+        scene = lf.get_scene()
+        if scene is None:
+            return ()
+        return tuple(sorted(str(getattr(n, "name", "")) for n in scene.get_nodes()))
+    except Exception:
+        return ()
+
+
+def horizon_tilted() -> bool:
+    """True se la camera non ha Z in alto (es. dopo la Home nativa, che e' Y-up).
+    Le viste verticali (pianta, da sotto) sono sempre considerate dritte."""
+    cam = get_camera_data()
+    if cam is None:
+        return False
+    eye, target, up, _fov = cam
+    f = zc.normalize(zc.sub(target, eye))
+    if abs(f[2]) > 0.98:
+        return False
+    r = zc.normalize(zc.cross(f, up))
+    return abs(r[2]) > TILT_TOLERANCE or up[2] < 0.0
+
+
+def init_host_watch() -> None:
+    """Stato iniziale: un ricaricamento del plugin con la scena gia' aperta
+    non deve far saltare la vista."""
+    S._project_key = _project_key()
+    S._scene_sig = _scene_signature()
+    S._home_pending_until = 0.0
+
+
+def watch_host() -> None:
+    """Chiamata dal draw handler, al massimo due volte al secondo.
+
+    * Cambio di progetto: LichtFeld rimette la verticale "legacy_y", la
+      riportiamo su data_z.
+    * Dati caricati: LichtFeld riporta la camera alla Home nativa (Y-up).
+      Per qualche secondo, se l'orizzonte e' storto, inquadriamo la scena in
+      isometrica Z-up.
+    """
+    now = time.monotonic()
+    if now - S._last_watch_t < WATCH_INTERVAL_S:
+        return
+    S._last_watch_t = now
+
+    key = _project_key()
+    if key != S._project_key:
+        S._project_key = key
+        S._native_up_prev = None
+        S._native_up_applied = False
+    if not S._native_up_applied:
+        apply_native_up_axis()
+
+    sig = _scene_signature()
+    if sig != S._scene_sig:
+        S._scene_sig = sig
+        if sig:
+            apply_native_up_axis()
+            if S.auto_home_on_load:
+                S._home_pending_until = now + HOME_AFTER_LOAD_S
+
+    if S._home_pending_until:
+        if now > S._home_pending_until:
+            S._home_pending_until = 0.0
+        elif not modal_dragging() and horizon_tilted():
+            S._home_pending_until = 0.0
+            home_zup()
+            request_redraw()
+
+
+def modal_dragging() -> bool:
+    return bool(S._orbit_dragging)
 
 
 # --------------------------------------------------------------------------- #

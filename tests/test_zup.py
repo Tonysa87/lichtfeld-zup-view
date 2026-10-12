@@ -401,5 +401,113 @@ zup_view.on_unload()
 zb.S.native_grid_xy_on_load = False; lf._rs.p["grid_plane"] = "1"
 zup_view.on_load(); check(lf._rs.p["grid_plane"] == "1", "opzione spenta: griglia nativa non toccata")
 zup_view.on_unload()
+
+# ---------------------------------------------------------------- bounds senza numpy
+# Il mock di Tensor.numpy() solleva come nel venv reale: i bounds passano solo dai Tensor.
+bad = np.vstack([pts, np.full((10, 3), np.nan), np.full((10, 3), np.inf)])
+lf._scene[0] = lf.Scene(bad, M)
+check(zb.compute_scene_bounds(), f"bounds con i Tensor (senza numpy), righe NaN/inf scartate: err='{zb.S.last_error}'")
+c = zb.S.scene_center
+check(abs(c[0] - 1105) < 0.3 and abs(c[1] - 203) < 0.3 and abs(c[2] - 51.5) < 0.3, f"centro con i Tensor {np.round(c, 2)}")
+R = np.eye(4); R[:3, :3] = [[0, -1, 0], [1, 0, 0], [0, 0, 1]]  # 90 gradi attorno a Z
+lf._scene[0] = lf.Scene(pts, R); zb.compute_scene_bounds(); c = zb.S.scene_center
+check(abs(c[0] + 203) < 0.3 and abs(c[1] - 105) < 0.3, f"bounds con rotazione del nodo {np.round(c, 2)}")
+check(zc.percentile_index(1, 99) == 0 and zc.percentile_index(101, 1) == 1 and zc.percentile_index(101, 99) == 99, "indice di percentile")
+
+# ---------------------------------------------------------------- navigazione Z-up nativa
+NATIVE_HOME = ((-5.657, 3.0, -5.657), (0.0, 0.0, 0.0), (0.0, 1.0, 0.0))  # viewport.hpp: home Y-up
+def tick():
+    zb.S._last_watch_t = 0.0; zup_overlay.draw(Ctx())
+lf._scene[0] = lf.Scene(pts)
+lf.enable_native_up(True); lf._up[0] = "legacy_y"; lf._up_calls.clear(); lf._rs.p["grid_plane"] = "1"
+zb.S.native_grid_xy_on_load = True; zb.S.always_orbit = True
+lf.ui.ops.invoked.clear(); lf.ui.ops.modal[0] = False; zb.S.modal_active = False
+zup_view.on_load()
+check(lf._up[0] == "data_z" and lf._up_calls == [("data_z", True)], f"all'avvio: verticale nativa data_z con griglia allineata {lf._up_calls}")
+check(zb.native_zup_active(), "navigazione Z-up nativa riconosciuta")
+# avvio dell'app: controller camera non ancora pronto, la chiamata non ha effetto
+_real_set = lf.set_navigation_up_axis
+zb.S._native_up_applied = False; lf._up[0] = "legacy_y"
+lf.set_navigation_up_axis = lambda axis, align_grid=False: None
+check(not zb.apply_native_up_axis() and not zb.S._native_up_applied, "controller non pronto: non segnata come applicata")
+lf.set_navigation_up_axis = _real_set; tick()
+check(lf._up[0] == "data_z" and zb.S._native_up_applied, "riprovata al frame successivo")
+zb.S._last_orbit_attempt = 0; tick()
+check(zb.S.modal_active, "modale avviato anche con la navigazione nativa (gizmo Z-up e tasto H)")
+opN = zup_ops.ZupOrbitOperator(); opN.invoke(None, None)
+EN = lambda **k: types.SimpleNamespace(**{"type": "", "value": "PRESS", "mouse_x": 800., "mouse_y": 400., "delta_x": 0., "delta_y": 0., "alt": False, "ctrl": False, "shift": False, "over_gui": False, **k})
+check(opN.modal(None, EN(type="MIDDLEMOUSE")) == {"PASS_THROUGH"} and not zb.S._orbit_dragging, "tasto centrale all'orbita nativa Z-up")
+zb.S.orbit_button_idx = 1
+check(opN.modal(None, EN(type="LEFTMOUSE", alt=True)) == {"PASS_THROUGH"}, "anche Alt+sinistro passa a LichtFeld")
+zb.S.orbit_button_idx = 0
+zb.go_standard_view("iso"); tick()
+gx, gy, _, _ = next(m for m in zb.S.gizmo_markers if m[3] == "top")
+check(opN.modal(None, EN(type="LEFTMOUSE", mouse_x=gx, mouse_y=gy)) == {"RUNNING_MODAL"}, "clic sul gizmo Z-up ancora gestito dal plugin")
+d = screen_dirs(); check(d["Y"][1] > 0.99 and lf.is_orthographic(), "gizmo +Z: pianta con il Nord in alto")
+f0 = lf._focus_calls[0]
+check(opN.modal(None, EN(type="KEY_F")) == {"PASS_THROUGH"} and lf._focus_calls[0] == f0, "tasto F al Focus nativo (gia' Z-up)")
+check(opN.modal(None, EN(type="KEY_H")) == {"RUNNING_MODAL"}, "tasto H: Home Z-up del plugin (quella nativa e' Y-up)")
+tb.calls.clear(); tb._UtilityToolbarController().dispatch("focus_selection", "")
+check(tb.calls == ["focus_selection"], "pulsante Focus: azione nativa")
+tb._UtilityToolbarController().dispatch("home", "")
+check(tb.calls == ["focus_selection"], "pulsante Home: versione Z-up")
+ctx = Ctx(); zup_overlay.draw(ctx)
+check(any("LichtFeld Z-up" in txt or "Z-up di LichtFeld" in txt for _, txt in ctx.t), "HUD: navigazione Z-up di LichtFeld")
+
+# dati caricati: LichtFeld torna alla Home nativa (Y-up) -> il plugin inquadra in Z-up
+lf.set_camera(*NATIVE_HOME)
+check(zb.horizon_tilted(), "la Home nativa e' storta per dati Z-up")
+lf._scene[0] = lf.Scene(pts, name="nuovo_dataset"); tick()
+d = screen_dirs()
+check(not zb.horizon_tilted() and abs(d["Z"][0]) < 1e-3 and d["Z"][1] > 0, f"dopo il caricamento: scena inquadrata in Z-up {d['Z']}")
+lf.set_camera(*NATIVE_HOME); tick()
+check(zb.horizon_tilted(), "una sola volta per caricamento: dopo non si combatte con l'utente")
+# reset nativo in ritardo (DatasetLoadCompleted dopo la comparsa del nodo)
+lf._scene[0] = lf.Scene(pts, name="altro"); zb.go_standard_view("iso"); tick()
+lf.set_camera(*NATIVE_HOME); tick()
+check(not zb.horizon_tilted(), "reset nativo arrivato dopo il nodo: raddrizzato entro la finestra")
+zb.S.auto_home_on_load = False
+lf._scene[0] = lf.Scene(pts, name="terzo"); lf.set_camera(*NATIVE_HOME); tick()
+check(zb.horizon_tilted(), "opzione spenta: nessuna inquadratura automatica")
+zb.S.auto_home_on_load = True
+# l'addestramento cambia solo il numero di gaussiane: nessun salto
+sig = zb.S._scene_sig; lf._scene[0].total_gaussian_count += 1000; tick()
+check(zb.S._scene_sig == sig and zb.S._home_pending_until == 0.0, "addestramento: nessuna inquadratura")
+
+# nuovo progetto: LichtFeld torna a legacy_y -> il plugin rimette data_z
+lf._project[0] = "uuid-2"; lf._up[0] = "legacy_y"; tick()
+check(lf._up[0] == "data_z", "nuovo progetto: verticale riportata su data_z")
+# scelta esplicita dell'utente (Y-up dal pannello Rendering) nello stesso progetto: rispettata
+lf._up[0] = "legacy_y"; tick()
+check(lf._up[0] == "legacy_y" and not zb.native_zup_active(), "Y-up scelta dall'utente: rispettata")
+check(opN.modal(None, EN(type="MIDDLEMOUSE")) == {"RUNNING_MODAL"} and zb.S._orbit_dragging, "con Y-up nativa torna l'orbita del plugin")
+opN.modal(None, EN(type="MIDDLEMOUSE", value="RELEASE"))
+check(not zb.S._orbit_dragging, "fine drag registrata")
+# opzione spenta dal pannello: ripristino
+lf._up[0] = "data_z"; zb.S._native_up_prev = "legacy_y"
+p = zup_panel.ZupPanel()
+class Toggle(UI):
+    def __getattr__(s, n):
+        f = UI.__getattr__(s, n)
+        if n == "checkbox":
+            return lambda label, v, *a: (True, False) if label == zup_i18n.t("native_up") else (False, v)
+        return f
+p.draw(Toggle())
+check(not zb.S.native_zup_per_project and lf._up[0] == "legacy_y", "opzione spenta: verticale originale ripristinata")
+zb.S.native_zup_per_project = True
+lf._project[0] = "uuid-3"; tick()
+check(lf._up[0] == "data_z", "opzione riaccesa: di nuovo data_z al cambio progetto")
+# layout stabile anche con la navigazione nativa
+DYNAMIC.add("zup_native_nav")
+check(layout() == layout(native_zup_per_project=False), "layout stabile con la navigazione nativa")
+with_native = layout(); lf.enable_native_up(False); without_native = layout(); lf.enable_native_up(True)
+check(with_native == without_native, "layout identico tra host con e senza navigazione nativa")
+# scarico: rimette legacy_y solo se l'abbiamo cambiata noi
+zup_view.on_unload()
+check(lf._up[0] == "legacy_y", "scarico: verticale del progetto ripristinata")
+lf._up[0] = "data_z"; lf._up_calls.clear()
+zup_view.on_load(); zup_view.on_unload()
+check(lf._up[0] == "data_z" and lf._up_calls == [], "progetto gia' Z-up: il plugin non lo tocca ne' all'avvio ne' allo scarico")
+lf.enable_native_up(False)
 print("\nFALLITI:", fails)
 sys.exit(1 if fails else 0)

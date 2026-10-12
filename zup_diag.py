@@ -43,6 +43,14 @@ def run() -> list[str]:
     except Exception:
         pass
 
+    # 1b. native Z-up navigation (LichtFeld after 0.5.4)
+    if zb.native_up_supported():
+        axis = zb.native_up_axis()
+        (ok if axis == zb.NATIVE_UP_DATA_Z else info)(
+            f"native navigation up axis: {axis} (plugin sets data_z: {zb.S.native_zup_per_project})")
+    else:
+        info("native navigation up axis: not available in this build (plugin orbit used)")
+
     # 2. set_camera with up = data Z: the camera right vector must be horizontal
     try:
         cam = lf.get_camera()

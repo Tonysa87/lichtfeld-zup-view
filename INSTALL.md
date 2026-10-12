@@ -36,10 +36,11 @@ Requires **LichtFeld Studio 0.5.4 or newer**. No extra Python packages are neede
 2. Load a scene, then open **Z-up View → Status and diagnostics → Run diagnostics**. Every line should read `OK` or `--`.
 3. Click **Frame scene**, then **Plan**: X should point right and North up.
 4. Drag with the middle mouse: the view orbits around Z and the horizon stays level.
+5. On a LichtFeld with the native Up axis (newer than 0.5.4), **Rendering → Viewport → Up axis** shows data +Z, and the diagnostics report `native navigation up axis: data_z`. After loading a dataset the view is upright, not sideways.
 
 ## Update and uninstall
 
-- **Update:** use **Update** in Tools → Plugin Marketplace, or run `lf.plugins.update("zup_view")`, then restart LichtFeld. Your preferences are kept, because they live in the plugin data folder.
+- **Update:** use **Update** in Tools → Plugin Marketplace, or run `lf.plugins.update("zup_view")`, then restart LichtFeld. Your preferences are kept, because they live in the plugin data folder. The new options of 0.3.0 (native Z-up navigation, framing after loading data) start switched on.
 - **Uninstall:** use **Uninstall** in the Marketplace, or run `lf.plugins.uninstall("zup_view")`.
 
 ## Troubleshooting
@@ -80,6 +81,7 @@ lf.plugins.install("Tonysa87/lichtfeld-zup-view")
 2. Carica una scena e usa **Stato e diagnostica → Esegui diagnostica**: tutte le righe devono essere `OK` o `--`.
 3. Clicca **Inquadra scena**, poi **Pianta**: X deve andare a destra e il Nord in alto.
 4. Trascina col tasto centrale: la vista gira attorno a Z con l'orizzonte in piano.
+5. Con un LichtFeld che ha l'Up axis nativo (successivo alla 0.5.4), **Rendering → Viewport → Up axis** indica +Z dei dati e la diagnostica riporta `native navigation up axis: data_z`. Dopo il caricamento di un dataset la vista è dritta, non di lato.
 
 **Problemi.**
 - Se compare "Plugin directory already exists", cancella la vecchia cartella `zup_view` e reinstalla.

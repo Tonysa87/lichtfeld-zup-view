@@ -1,9 +1,13 @@
-"""Operatore modale: orbita "turntable" attorno a Z.
+"""Operatore modale: orbita "turntable" attorno a Z, clic sul gizmo Z-up, H/F.
 
 Finche' e' attivo intercetta solo il gesto di orbita scelto
 (tasto centrale, oppure Alt + tasto sinistro) quando il mouse e' sopra il
 viewport, e lascia passare tutto il resto (pan con tasto destro, zoom con la
 rotella, selezione, gizmo...). Esc lo disattiva.
+
+Se LichtFeld naviga gia' con Z in alto (verticale nativa "data_z", dopo la
+0.5.4) il gesto di orbita passa all'orbita nativa: il modale resta solo per
+i clic sul gizmo Z-up e per il tasto H.
 
 Note dalla sorgente di LichtFeld:
 * Il modale Python riceve gli eventi prima del controller camera nativo
@@ -73,6 +77,11 @@ class ZupOrbitOperator(Operator):
         return o[0] <= x <= o[0] + s[0] and o[1] <= y <= o[1] + s[1]
 
     def modal(self, context, event) -> set:
+        result = self._modal(event)
+        zb.S._orbit_dragging = self._dragging
+        return result
+
+    def _modal(self, event) -> set:
         if not zb.S.modal_active:  # spento dal pannello
             self._dragging = False
             return CANCELLED
@@ -90,7 +99,7 @@ class ZupOrbitOperator(Operator):
             if et == "KEY_H":
                 zb.home_zup()
                 return MODAL
-            if et == "KEY_F":
+            if et == "KEY_F" and not zb.native_zup_active():
                 zb.focus_selection_zup()
                 return MODAL
 
@@ -128,7 +137,8 @@ class ZupOrbitOperator(Operator):
                 zb.go_standard_view(view)
                 return MODAL
 
-        if ev == "PRESS" and self._is_orbit_press(event) and self._inside_viewport(event):
+        if ev == "PRESS" and self._is_orbit_press(event) and self._inside_viewport(event) \
+                and not zb.native_zup_active():
             self._dragging = True
             self._last = (float(event.mouse_x), float(event.mouse_y))
             return MODAL
@@ -146,6 +156,7 @@ class ZupOrbitOperator(Operator):
         # Chiamata anche da unregister_class con il lock del registro preso:
         # qui niente chiamate a lf.ui.ops.*.
         self._dragging = False
+        zb.S._orbit_dragging = False
         zb.S.modal_active = False
 
 

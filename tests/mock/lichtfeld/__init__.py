@@ -44,20 +44,38 @@ def register_class(c): _registered.append(c)
 def unregister_class(c): _registered.remove(c)
 
 class _T:
+    """Tensor di LichtFeld (py_tensor.cpp) su numpy: slicing, maschera di righe, sort per dimensione.
+    numpy() solleva come nel venv del plugin, dove numpy non c'e'."""
     def __init__(s,a): s.a=np.asarray(a)
     def cpu(s): return s
-    def numpy(s): return s.a
-    def __getitem__(s,k): return _T(s.a[k])
+    def numpy(s): raise ModuleNotFoundError("No module named 'numpy'")
+    @property
+    def shape(s): return tuple(s.a.shape)
+    def __getitem__(s,k):
+        if isinstance(k,_T):
+            m=k.a
+            if m.dtype!=bool: raise RuntimeError("Mask must be a boolean tensor")
+            return _T(s.a[m])
+        if isinstance(k,tuple) and any(isinstance(i,slice) and (i.step or 1)<0 for i in k): raise ValueError("negative step")
+        return _T(s.a[k])
+    def isfinite(s): return _T(np.isfinite(s.a))
+    def all(s,dim=None,keepdim=False): return _T(s.a.all() if dim is None else s.a.all(axis=dim,keepdims=keepdim))
+    def contiguous(s): return _T(np.ascontiguousarray(s.a))
+    def sort(s,dim=-1,descending=False):
+        i=np.argsort(s.a,axis=dim,kind="stable")
+        if descending: i=np.flip(i,axis=dim)
+        return (_T(np.take_along_axis(s.a,i,axis=dim)),_T(i))
+    def item(s): return float(s.a)
 class SplatData:
     def __init__(s,pts): s._p=pts; s.num_points=len(pts)
     def get_means(s): return _T(s._p)
 class Node:
-    def __init__(s,pts,M=None):
-        s._sd=SplatData(pts); s.world_transform=tuple(np.ravel(M if M is not None else np.eye(4)))
+    def __init__(s,pts,M=None,name="splat"):
+        s.name=name; s._sd=SplatData(pts); s.world_transform=tuple(np.ravel(M if M is not None else np.eye(4)))
     def splat_data(s): return s._sd
     def point_cloud(s): return None
 class Scene:
-    def __init__(s,pts,M=None): s._n=[Node(pts,M)]; s._m=SplatData(pts); s.total_gaussian_count=len(pts)
+    def __init__(s,pts,M=None,name="splat"): s._n=[Node(pts,M,name)]; s._m=SplatData(pts); s.total_gaussian_count=len(pts)
     def combined_model(s): return s._m
     def get_nodes(s,t=None): return s._n
 _scene=[None]
@@ -120,3 +138,23 @@ _DATA=tempfile.mkdtemp(prefix="lfsdata")
 def _data_dir(n):
     d=os.path.join(_DATA,n); os.makedirs(d,exist_ok=True); return d
 plugins=types.SimpleNamespace(settings=lambda n: _Settings(n), data_dir=_data_dir)
+
+# progetto corrente
+_project=["uuid-1", None]
+def project_uuid(): return _project[0]
+def project_path(): return _project[1]
+
+# Navigazione Z-up nativa (dopo la 0.5.4, PR #3203). Assente nella 0.5.4:
+# i test la attivano con enable_native_up(True).
+_up=["legacy_y"]; _up_calls=[]
+def _get_navigation_up_axis(): return _up[0]
+def _set_navigation_up_axis(axis, align_grid=False):
+    if axis not in ("legacy_y","data_z"): raise ValueError("navigation up axis must be legacy_y or data_z")
+    _up_calls.append((axis,align_grid)); _up[0]=axis
+    if align_grid: _rs.p["grid_plane"]="2" if axis=="data_z" else "1"
+def enable_native_up(on):
+    g=globals()
+    if on:
+        g["get_navigation_up_axis"]=_get_navigation_up_axis; g["set_navigation_up_axis"]=_set_navigation_up_axis
+    else:
+        g.pop("get_navigation_up_axis",None); g.pop("set_navigation_up_axis",None)

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0 (2026-10-12)
+
+Works with LichtFeld Studio's native Z-up navigation (PR #3203, in master after 0.5.4). Still works on 0.5.4.
+
+- Native navigation: where LichtFeld offers `lf.set_navigation_up_axis`, the plugin sets the project's Up axis to data +Z when it loads, when a project is opened or created and when data is loaded. The middle mouse then goes to LichtFeld's own Z-up orbit (with fly and drone modes). The plugin's orbit is used only on 0.5.4, or if you choose Y-up in Rendering → Viewport. An option in Navigation turns this off and restores the project's previous Up axis.
+- The plugin keeps what LichtFeld does not do yet: the Z-up gizmo with data axes and survey views (plan with North up, elevations, orthographic), Home in a Z-up isometric view, the HUD and the large-coordinate warning. With the native Z-up, Focus (button and F key) is LichtFeld's own, which is already level.
+- After loading data, LichtFeld resets the camera to its Y-up Home, so the scene appeared sideways. The plugin now frames the scene in a Z-up isometric view instead (only if the horizon is not level, within a few seconds of the load). Option in Navigation.
+- Fix: scene bounds failed with "No module named 'numpy'", because the plugin's Python environment has no numpy. Home, Frame scene and the grid size then fell back to the origin. Bounds are now computed with LichtFeld's own tensors on the GPU; rows with NaN or infinite values are ignored.
+- Diagnostics report the native Up axis.
+
 ## 0.2.4 (2026-10-11)
 
 Tested and working on LichtFeld Studio 0.5.4 (Windows).

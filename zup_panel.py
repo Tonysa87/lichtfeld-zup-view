@@ -112,13 +112,27 @@ class ZupPanel(lf.ui.Panel):
 
     def _navigation(self, ui):
         S = zb.S
-        # stato: sempre lo stesso widget (attiva / in pausa)
-        if S.modal_active:
+        native = zb.native_zup_active()
+        # stato: sempre lo stesso widget (nativa / attiva / in pausa)
+        if native:
+            ui.text_colored(t("orbit_native_label"), COL_OK)
+        elif S.modal_active:
             ui.text_colored(t("orbit_on_label"), COL_OK)
         else:
             ui.text_colored(t("orbit_paused_label"), COL_INFO)
+        with _Box(ui, "native_nav"):
+            if zb.native_up_supported():
+                changed, S.native_zup_per_project = ui.checkbox(t("native_up"), S.native_zup_per_project)
+                if changed:
+                    if S.native_zup_per_project:
+                        zb.apply_native_up_axis()
+                    else:
+                        zb.restore_native_up_axis()
+            else:
+                ui.text_disabled(t("native_up_missing"))
+        _, S.auto_home_on_load = ui.checkbox(t("auto_home"), S.auto_home_on_load)
         _, S.override_home_focus = ui.checkbox(t("override_home"), S.override_home_focus)
-        ui.text_disabled(t("orbit_note"))
+        ui.text_disabled(t("orbit_note_native") if native else t("orbit_note"))
 
         _, S.orbit_button_idx = ui.combo(t("gesture"), S.orbit_button_idx, [t("gesture_mmb"), t("gesture_alt")])
         ui.text_disabled(t("gesture_alt_note") if S.orbit_button_idx == 1 else t("gesture_mmb_note"))

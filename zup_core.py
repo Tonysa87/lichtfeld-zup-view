@@ -288,30 +288,54 @@ def project_ortho(p, eye, right, up, ortho_scale: float, origin, size):
 
 
 # --------------------------------------------------------------------------- #
-# Bounding robusto
+# Bounding robusto (Python puro: il venv del plugin non ha numpy)
 # --------------------------------------------------------------------------- #
-def robust_bounds(points, lo_pct: float = 1.0, hi_pct: float = 99.0, max_samples: int = 1_000_000):
-    """points: array numpy (N,3). Ritorna (min, max, center) ignorando i floaters."""
-    import numpy as np
-
-    pts = np.asarray(points, dtype=np.float64).reshape(-1, 3)
-    if pts.shape[0] > max_samples:
-        pts = pts[:: int(math.ceil(pts.shape[0] / max_samples))]
-    pts = pts[np.isfinite(pts).all(axis=1)]
-    if pts.shape[0] == 0:
-        raise ValueError("nessun punto valido")
-    lo = np.percentile(pts, lo_pct, axis=0)
-    hi = np.percentile(pts, hi_pct, axis=0)
-    c = (lo + hi) * 0.5
-    return tuple(map(float, lo)), tuple(map(float, hi)), tuple(map(float, c))
+def percentile_index(n: int, pct: float) -> int:
+    """Indice dell'elemento al percentile `pct` in una sequenza ordinata di n valori."""
+    if n <= 1:
+        return 0
+    i = int(round((n - 1) * max(0.0, min(100.0, pct)) / 100.0))
+    return max(0, min(n - 1, i))
 
 
-def apply_transform_rowmajor(points, m16):
-    """Applica una 4x4 row-major (tupla di 16 o 4x4) a punti (N,3) numpy."""
-    import numpy as np
+def transform_point_rowmajor(m16, p) -> Vec3:
+    """Applica una 4x4 row-major (16 valori) a un punto."""
+    m = [float(v) for v in m16]
+    x, y, z = float(p[0]), float(p[1]), float(p[2])
+    return (
+        m[0] * x + m[1] * y + m[2] * z + m[3],
+        m[4] * x + m[5] * y + m[6] * z + m[7],
+        m[8] * x + m[9] * y + m[10] * z + m[11],
+    )
 
-    M = np.asarray(m16, dtype=np.float64).reshape(4, 4)
-    if np.allclose(M, np.eye(4)):
-        return points
-    P = np.asarray(points, dtype=np.float64).reshape(-1, 3)
-    return P @ M[:3, :3].T + M[:3, 3]
+
+def is_identity_rowmajor(m16) -> bool:
+    try:
+        m = [float(v) for v in m16]
+    except Exception:
+        return True
+    if len(m) != 16:
+        return True
+    return all(abs(m[i] - (1.0 if i in (0, 5, 10, 15) else 0.0)) < 1e-9 for i in range(16))
+
+
+def transform_bounds_rowmajor(m16, lo, hi):
+    """Box allineato agli assi che contiene il box (lo, hi) trasformato."""
+    if m16 is None or is_identity_rowmajor(m16):
+        return tuple(lo), tuple(hi)
+    corners = [transform_point_rowmajor(m16, (x, y, z))
+               for x in (lo[0], hi[0]) for y in (lo[1], hi[1]) for z in (lo[2], hi[2])]
+    return (
+        tuple(min(c[i] for c in corners) for i in range(3)),
+        tuple(max(c[i] for c in corners) for i in range(3)),
+    )
+
+
+def merge_bounds(boxes):
+    """Unione di box (lo, hi); None se la lista e' vuota."""
+    boxes = [b for b in boxes if b is not None]
+    if not boxes:
+        return None
+    lo = tuple(min(b[0][i] for b in boxes) for i in range(3))
+    hi = tuple(max(b[1][i] for b in boxes) for i in range(3))
+    return lo, hi

@@ -184,7 +184,10 @@ def _draw_hud(ctx, origin, size, eye, target, up):
     S = zb.S
     el = zc.elevation_deg(eye, target)
     heading = zc.view_heading_deg(eye, target, up)
-    mode = t("hud_orbit") if S.modal_active else t("hud_native")
+    if zb.native_zup_active():
+        mode = t("hud_native_zup")
+    else:
+        mode = t("hud_orbit") if S.modal_active else t("hud_native")
     proj = t("hud_ortho") if zb.is_ortho() else t("hud_persp")
     txt = t("hud_line", h=heading, e=el, x=target[0], y=target[1], z=target[2], proj=proj, mode=mode)
     ctx.draw_text_2d((origin[0] + 14.0, origin[1] + size[1] - 18.0), txt, COL_TEXT, 0.0)
@@ -198,13 +201,16 @@ def _draw_hud(ctx, origin, size, eye, target, up):
 
 
 def draw(ctx):
-    """Callback del draw handler. Non solleva mai e non modifica la camera."""
+    """Callback del draw handler. Non solleva mai. Modifica la camera solo una
+    volta dopo il caricamento dei dati (watch_host: Home Z-up se la Home
+    nativa ha lasciato la vista storta)."""
     global _last_error
     S = zb.S
     try:
         zb.reconcile_modal_state()
         if S._native_grid_pending:
             zb.apply_native_grid_on_load()
+        zb.watch_host()
         zb.ensure_orbit()
         cam = zb.get_camera_data()
         if cam is None:

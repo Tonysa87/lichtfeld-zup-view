@@ -4,7 +4,7 @@ A survey-style viewport for scenes whose data is **Z-up** (XY horizontal, +Z up)
 
 It changes **only how the scene is viewed**: camera views, a turntable orbit around Z, a Z-up orientation gizmo, an XY grid and a HUD. Scene data, node transforms and exports are never modified.
 
-**Version 0.2.4: tested and working** on LichtFeld Studio 0.5.4 (Windows). Changes are listed in [CHANGELOG.md](CHANGELOG.md).
+**Version 0.3.0** works with LichtFeld Studio 0.5.4 and with the native Z-up navigation added after it (PR #3203, master of 2026-10-11). Changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
 *Italiano più sotto.*
 
@@ -17,24 +17,25 @@ LichtFeld assumes COLMAP data with Y pointing down. To show it upright it applie
 - the orientation gizmo labels the viewport's internal axes, so Y and Z appear reversed;
 - Home and Focus restore a Y-up camera.
 
-LichtFeld has no world-up setting (checked in 0.5.4 and 0.5.5). This plugin provides Z-up views and navigation on top of the native camera.
+LichtFeld 0.5.4 has no world-up setting; the plugin then provides its own Z-up orbit. Newer builds have a per-project **Up axis** (Rendering → Viewport): the plugin switches it to data +Z and leaves the orbit to LichtFeld. The gizmo labels, Home, the camera reset after loading data and survey views are still Y-up or missing natively, and the plugin covers them.
 
 ## Install
 
 In LichtFeld, open **Tools → Plugin Marketplace**, enter `Tonysa87/lichtfeld-zup-view` in the GitHub field and click **Install Plugin**. The **Z-up View** tab appears in the right panel.
 
-Requires LichtFeld Studio ≥ 0.5.4 and needs no extra Python packages. For the Python console, a manual copy, updating, uninstalling and troubleshooting, see **[INSTALL.md](INSTALL.md)**.
+Requires LichtFeld Studio ≥ 0.5.4 and needs no extra Python packages (not even numpy: scene bounds use LichtFeld's tensors). For the Python console, a manual copy, updating, uninstalling and troubleshooting, see **[INSTALL.md](INSTALL.md)**.
 
 ## What happens when the plugin is active
 
 Nothing needs to be configured. As soon as the plugin loads:
 
-- **The middle mouse orbits around Z.** The Z-up orbit is always on. It pauses by itself only while another tool runs an action (for example a selection rectangle) or while the Align tool is active, then resumes.
+- **The middle mouse orbits around Z.** With a LichtFeld that has the native Up axis, the plugin sets it to data +Z for the current project (again when a project is opened or created, and when data is loaded) and the orbit, fly and drone modes are LichtFeld's own. On 0.5.4 the plugin's Z-up orbit is used instead: it pauses by itself only while another tool runs an action (for example a selection rectangle) or while the Align tool is active, then resumes.
+- **After loading data the view is upright.** LichtFeld resets the camera to its Y-up Home; the plugin frames the scene in a Z-up isometric view instead.
 - **A Z-up gizmo replaces LichtFeld's** in the top-right corner. It shows the data axes: X red, Y green, Z blue. Clicking a sphere snaps to that view: +Z gives the plan, −Y the front from South, +X the view from East, and so on.
 - **LichtFeld's grid moves to the data XY plane** (Z = 0).
-- **Home and Focus work in Z-up.** This applies to the buttons under the gizmo and to the H and F keys. Home frames the whole scene in a Z-up isometric view. Focus keeps LichtFeld's framing of the selection, then levels the horizon.
+- **Home and Focus work in Z-up.** This applies to the buttons under the gizmo and to the H and F keys. Home frames the whole scene in a Z-up isometric view. Focus keeps LichtFeld's framing of the selection, then levels the horizon (with the native Up axis, LichtFeld's Focus is already level and is used as is).
 
-When the plugin is unloaded, LichtFeld's gizmo, grid plane and Home/Focus buttons return to normal.
+When the plugin is unloaded, LichtFeld's gizmo, grid plane, Home/Focus buttons and the project's Up axis (if the plugin changed it) return to normal.
 
 ## Using it
 
@@ -42,7 +43,7 @@ When the plugin is unloaded, LichtFeld's gizmo, grid plane and Home/Focus button
 
 | Input | Action |
 |---|---|
-| Middle mouse drag | Orbit around the vertical axis through the pivot |
+| Middle mouse drag | Orbit around the vertical axis through the pivot (LichtFeld's own orbit when its Up axis is Z) |
 | Right mouse drag / wheel | Pan / zoom (native) |
 | Click on a Z-up gizmo sphere | Snap to that axis view |
 | H / Home button | Frame the scene, Z-up isometric |
@@ -56,7 +57,9 @@ When the plugin is unloaded, LichtFeld's gizmo, grid plane and Home/Focus button
   - Front (from South), Back (from North), Left (from West), Right (from East).
   - Plan and elevations switch to orthographic (optional). In plan, X points right and North up.
 - **Navigation:**
-  - Orbit status (active or paused).
+  - Orbit status: LichtFeld's native Z-up, plugin orbit active, or paused.
+  - Use LichtFeld's native Z-up navigation (on by default, only on builds that have it).
+  - Frame the scene in Z-up after loading data (on by default).
   - Orbit gesture: middle mouse, or Alt + left mouse.
   - Sensitivity and direction inversion.
   - Step rotation buttons.
@@ -75,7 +78,8 @@ When the plugin is unloaded, LichtFeld's gizmo, grid plane and Home/Focus button
 
 ## Known limits
 
-- The plugin keeps a modal operator running for the Z-up orbit. The Align tool is handled automatically. If another native tool refuses to start, please open an issue.
+- The plugin keeps a modal operator running for the Z-up orbit, the gizmo clicks and the H key, also with the native Up axis. The Align tool is handled automatically. If another native tool refuses to start, please open an issue.
+- With the native Up axis the plugin sets it again when a project is opened or created and when data is loaded. If you choose Y-up in Rendering → Viewport it is respected until the next project or dataset; to keep Y-up, turn off the option in Navigation.
 - LichtFeld's Align to Ground still works in Y-up and does not know about the plugin. Use the plugin's views instead.
 - Coordinates are shown as LichtFeld reads them: if `centralize_dataset` was used at import, they are translated.
 - In independent split view, the overlay follows the main viewport.
@@ -122,12 +126,13 @@ Copyright © 2026 Antonio Sartini. Released under GPL-3.0-or-later, the same lic
 
 Plugin che fa vedere la scena come in Metashape, CloudCompare o un CAD: **XY in piano, +Z in alto**. Agisce solo sul viewport, quindi dati, trasformazioni ed export restano identici.
 
-**Versione 0.2.4: provata e funzionante** su LichtFeld Studio 0.5.4 (Windows).
+**Versione 0.3.0**: funziona con LichtFeld Studio 0.5.4 e con la navigazione Z-up nativa arrivata dopo (PR #3203, master dell'11/10/2026).
 
 **Installazione.** Apri **Strumenti → Marketplace plugin**, scrivi `Tonysa87/lichtfeld-zup-view` e clicca **Installa plugin**. Gli altri metodi sono in [INSTALL.md](INSTALL.md). Compare la scheda **Z-up View**, in italiano se LichtFeld è in italiano.
 
 **All'attivazione è già tutto impostato:**
-- il tasto centrale gira attorno a Z: l'orbita Z-up è sempre attiva e va in pausa solo mentre lavora un altro strumento o con Align;
+- il tasto centrale gira attorno a Z: se LichtFeld ha l'**Up axis** nativo, il plugin lo imposta su +Z dei dati (anche a ogni progetto aperto o creato e a ogni caricamento di dati) e l'orbita è quella di LichtFeld; con la 0.5.4 resta l'orbita del plugin, che va in pausa solo mentre lavora un altro strumento o con Align;
+- dopo il caricamento dei dati la vista è dritta: LichtFeld riporta la camera alla sua Home Y-up, il plugin inquadra la scena in isometrica Z-up;
 - in alto a destra c'è il gizmo Z-up con gli assi dei dati, e un clic su una sferetta porta alla vista corrispondente;
 - la griglia di LichtFeld passa sul piano XY;
 - Home, Focus e i tasti H e F lavorano in Z-up.

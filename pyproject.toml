@@ -1,6 +1,6 @@
 [project]
 name = "zup_view"
-version = "0.2.4"
+version = "0.3.0"
 description = "Survey-style viewport for Z-up data: XY plan, +Z up, turntable orbit, XY grid. View only, scene data is never modified."
 readme = "README.md"
 license = "GPL-3.0-or-later"
